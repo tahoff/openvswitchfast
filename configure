@@ -1859,13 +1859,13 @@ else
 
 /* System header to define __stub macros and hopefully few prototypes,
     which can conflict with char $2 (); below.
-    Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
+    Prefer <limits.h> to <util.h> if __STDC__ is defined, since
     <limits.h> exists even on freestanding compilers.  */
 
 #ifdef __STDC__
 # include <limits.h>
 #else
-# include <assert.h>
+# include <util.h>
 #endif
 
 #undef $2
@@ -4135,7 +4135,7 @@ for ac_c_preproc_warn_flag in '' yes
 do
   # Use a header file that comes with gcc, so configuring glibc
   # with a fresh cross-compiler works.
-  # Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
+  # Prefer <limits.h> to <util.h> if __STDC__ is defined, since
   # <limits.h> exists even on freestanding compilers.
   # On the NeXT, cc -E runs the code through the compiler's parser,
   # not just through cpp. "Syntax error" is here to catch this case.
@@ -4144,7 +4144,7 @@ do
 #ifdef __STDC__
 # include <limits.h>
 #else
-# include <assert.h>
+# include <util.h>
 #endif
 		     Syntax error
 _ACEOF
@@ -4194,7 +4194,7 @@ for ac_c_preproc_warn_flag in '' yes
 do
   # Use a header file that comes with gcc, so configuring glibc
   # with a fresh cross-compiler works.
-  # Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
+  # Prefer <limits.h> to <util.h> if __STDC__ is defined, since
   # <limits.h> exists even on freestanding compilers.
   # On the NeXT, cc -E runs the code through the compiler's parser,
   # not just through cpp. "Syntax error" is here to catch this case.
@@ -4203,7 +4203,7 @@ do
 #ifdef __STDC__
 # include <limits.h>
 #else
-# include <assert.h>
+# include <util.h>
 #endif
 		     Syntax error
 _ACEOF

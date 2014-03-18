@@ -4162,7 +4162,7 @@ EOF
 #endif
 #include <malloc.h>
 #include <stdarg.h>
-#include <assert.h>
+#include <util.h>
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>
