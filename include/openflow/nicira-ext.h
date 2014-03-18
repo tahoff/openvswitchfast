@@ -940,7 +940,7 @@ OFP_ASSERT(sizeof(struct nx_action_learn) == 32);
 #define NX_LEARN_DST_LOAD      (1 << 11) /* Add NXAST_REG_LOAD action. */
 #define NX_LEARN_DST_OUTPUT    (2 << 11) /* Add OFPAT_OUTPUT action. */
 #define NX_LEARN_DST_RESERVED  (3 << 11) /* Not yet defined. */
-#define NX_LEARN_DST_MASK      (3 << 11)
+#define NX_LEARN_DST_MASK      (4 << 11)
 
 /* Action structure for NXAST_FIN_TIMEOUT.
  *

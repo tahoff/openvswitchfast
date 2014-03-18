@@ -137,6 +137,7 @@ learn_from_openflow(const struct nx_action_learn *nal, struct ofpbuf *ofpacts)
         /* Check for valid src and dst type combination. */
         if (spec->dst_type == NX_LEARN_DST_MATCH ||
             spec->dst_type == NX_LEARN_DST_LOAD ||
+            spec->dst_type == NX_LEARN_DST_RESERVED ||
             (spec->dst_type == NX_LEARN_DST_OUTPUT &&
              spec->src_type == NX_LEARN_SRC_FIELD)) {
             /* OK. */
@@ -216,6 +217,10 @@ learn_check(const struct ofpact_learn *learn, const struct flow *flow)
 
         case NX_LEARN_DST_OUTPUT:
             /* Nothing to do. */
+            break;
+
+        case NX_LEARN_DST_RESERVED:
+            /* Addition for resubmit */
             break;
         }
     }
@@ -378,6 +383,14 @@ learn_execute(const struct ofpact_learn *learn, const struct flow *flow,
                 }
             }
             break;
+
+        case NX_LEARN_DST_RESERVED:
+            resubmit = ofpact_put_RESUBMIT(ofpacts);
+            resubmit->ofpact.compat = OFPUTIL_NXAST_RESUBMIT_TABLE;
+            /* hard coded values */
+            resubmit->table_id = 2;
+            break; 
+
         }
     }
     ofpact_pad(ofpacts);
@@ -538,6 +551,15 @@ learn_parse_spec(const char *orig, char *name, char *value,
         spec->n_bits = spec->src.n_bits;
         spec->src_type = NX_LEARN_SRC_FIELD;
         spec->dst_type = NX_LEARN_DST_OUTPUT;
+    } else if (!strcmp(name, "reserved")) {
+        char *error = mf_parse_subfield(&spec->src, value);
+        if (error) {
+            return error;
+        }
+ 
+        spec->n_bits = spec->src.n_bits;
+        spec->src_type = NX_LEARN_SRC_FIELD;
+        spec->dst_type = NX_LEARN_DST_RESERVED;
     } else {
         return xasprintf("%s: unknown keyword %s", orig, name);
     }
@@ -709,6 +731,12 @@ learn_format(const struct ofpact_learn *learn, struct ds *s)
             ds_put_cstr(s, "output:");
             mf_format_subfield(&spec->src, s);
             break;
+
+        case NX_LEARN_SRC_FIELD | NX_LEARN_DST_RESERVED:
+            ds_put_cstr(s, "reserved:");
+            mf_format_subfield(&spec->src, s);
+            break;
+
         }
     }
     ds_put_char(s, ')');
