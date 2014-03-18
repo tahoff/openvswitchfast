@@ -313,6 +313,7 @@ learn_execute(const struct ofpact_learn *learn, const struct flow *flow,
               struct ofputil_flow_mod *fm, struct ofpbuf *ofpacts)
 {
     const struct ofpact_learn_spec *spec;
+    struct ofpact_resubmit *resubmit;
 
     match_init_catchall(&fm->match);
     fm->priority = learn->priority;
