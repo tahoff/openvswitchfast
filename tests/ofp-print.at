@@ -631,7 +631,7 @@ b9 7c c0 a8 00 02 c0 a8 00 01 00 00 2b 60 00 00 \
 00 00 00 00 \
 "], [0], [dnl
 OFPT_PACKET_OUT (xid=0x0): in_port=1 actions=output:3 data_len=60
-tcp,metadata=0,in_port=0,vlan_tci=0x0000,dl_src=50:54:00:00:00:06,dl_dst=50:54:00:00:00:05,nw_src=192.168.0.2,nw_dst=192.168.0.1,nw_tos=0,nw_ecn=0,nw_ttl=64,tp_src=0,tp_dst=11104 tcp_csum:6d75
+tcp,metadata=0,in_port=0,vlan_tci=0x0000,dl_src=50:54:00:00:00:06,dl_dst=50:54:00:00:00:05,nw_src=192.168.0.2,nw_dst=192.168.0.1,nw_tos=0,nw_ecn=0,nw_ttl=64,tp_src=0,tp_dst=11104,tcp_flags=0x014 tcp_csum:6d75
 ])
 AT_CLEANUP
 
@@ -646,7 +646,7 @@ b9 7c c0 a8 00 02 c0 a8 00 01 00 00 2b 60 00 00 \
 00 00 00 00 \
 " 3], [0], [dnl
 OFPT_PACKET_OUT (xid=0x0): in_port=1 actions=output:3 data_len=60
-tcp,metadata=0,in_port=0,vlan_tci=0x0000,dl_src=50:54:00:00:00:06,dl_dst=50:54:00:00:00:05,nw_src=192.168.0.2,nw_dst=192.168.0.1,nw_tos=0,nw_ecn=0,nw_ttl=64,tp_src=0,tp_dst=11104 tcp_csum:6d75
+tcp,metadata=0,in_port=0,vlan_tci=0x0000,dl_src=50:54:00:00:00:06,dl_dst=50:54:00:00:00:05,nw_src=192.168.0.2,nw_dst=192.168.0.1,nw_tos=0,nw_ecn=0,nw_ttl=64,tp_src=0,tp_dst=11104,tcp_flags=0x014 tcp_csum:6d75
 00000000  50 54 00 00 00 05 50 54-00 00 00 06 08 00 45 00
 00000010  00 28 00 00 40 00 40 06-b9 7c c0 a8 00 02 c0 a8
 00000020  00 01 00 00 2b 60 00 00-00 00 6a 4f 2b 58 50 14
@@ -677,7 +677,7 @@ b9 7c c0 a8 00 02 c0 a8 00 01 00 00 2b 60 00 00 \
 00 00 00 00 \
 "], [0], [dnl
 OFPT_PACKET_OUT (OF1.2) (xid=0x8858dfc5): in_port=LOCAL actions=FLOOD data_len=60
-tcp,metadata=0,in_port=0,vlan_tci=0x0000,dl_src=50:54:00:00:00:06,dl_dst=50:54:00:00:00:05,nw_src=192.168.0.2,nw_dst=192.168.0.1,nw_tos=0,nw_ecn=0,nw_ttl=64,tp_src=0,tp_dst=11104 tcp_csum:6d75
+tcp,metadata=0,in_port=0,vlan_tci=0x0000,dl_src=50:54:00:00:00:06,dl_dst=50:54:00:00:00:05,nw_src=192.168.0.2,nw_dst=192.168.0.1,nw_tos=0,nw_ecn=0,nw_ttl=64,tp_src=0,tp_dst=11104,tcp_flags=0x014 tcp_csum:6d75
 ])
 AT_CLEANUP
 

@@ -122,6 +122,10 @@ match_wc_init(struct match *match, const struct flow *flow)
             memset(&wc->masks.tp_src, 0xff, sizeof wc->masks.tp_src);
             memset(&wc->masks.tp_dst, 0xff, sizeof wc->masks.tp_dst);
         }
+        if (flow->nw_proto == IPPROTO_TCP &&
+            flow->tcp_flags != 0) { /* XXX: How about matching zero flags? */
+            memset(&wc->masks.tcp_flags, 0xff, sizeof wc->masks.tcp_flags);
+        }
 
         if (flow->nw_proto == IPPROTO_ICMPV6) {
             memset(&wc->masks.arp_sha, 0xff, sizeof wc->masks.arp_sha);
@@ -542,6 +546,20 @@ match_set_tp_dst_masked(struct match *match, ovs_be16 port, ovs_be16 mask)
 }
 
 void
+match_set_tcp_flags(struct match *match, ovs_be16 flags)
+{
+    match_set_tcp_flags_masked(match, flags, htons(0x0fff));
+}
+
+void
+match_set_tcp_flags_masked(struct match *match, ovs_be16 flags, ovs_be16 mask)
+{
+    mask &= htons(0x0fff);
+    match->flow.tcp_flags = flags & mask;
+    match->wc.masks.tcp_flags = mask;
+}
+
+void
 match_set_nw_proto(struct match *match, uint8_t nw_proto)
 {
     match->flow.nw_proto = nw_proto;
@@ -835,7 +853,7 @@ match_format(const struct match *match, struct ds *s, unsigned int priority)
 
     int i;
 
-    BUILD_ASSERT_DECL(FLOW_WC_SEQ == 20);
+    BUILD_ASSERT_DECL(FLOW_WC_SEQ == 21);
 
     if (priority != OFP_DEFAULT_PRIORITY) {
         ds_put_format(s, "priority=%u,", priority);
@@ -1060,6 +1078,20 @@ match_format(const struct match *match, struct ds *s, unsigned int priority)
     } else {
         format_be16_masked(s, "tp_src", f->tp_src, wc->masks.tp_src);
         format_be16_masked(s, "tp_dst", f->tp_dst, wc->masks.tp_dst);
+    }
+    if ((f->dl_type == htons(ETH_TYPE_IP)
+         || f->dl_type == htons(ETH_TYPE_IPV6)) &&
+        f->nw_proto == IPPROTO_TCP) {
+        if (wc->masks.tcp_flags) {
+            if (wc->masks.tcp_flags == htons(UINT16_MAX)) {
+                ds_put_format(s, "tcp_flags=0x%03"PRIx16",",
+                              ntohs(f->tcp_flags));
+            } else {
+                ds_put_format(s, "tcp_flags=0x%03"PRIx16"/0x%03"PRIx16",",
+                              ntohs(f->tcp_flags),
+                              ntohs(wc->masks.tcp_flags));
+            }
+        }
     }
 
     if (s->length > start_len && ds_last(s) == ',') {

@@ -36,7 +36,7 @@ struct ofpbuf;
 /* This sequence number should be incremented whenever anything involving flows
  * or the wildcarding of flows changes.  This will cause build assertion
  * failures in places which likely need to be updated. */
-#define FLOW_WC_SEQ 20
+#define FLOW_WC_SEQ 21
 
 #define FLOW_N_REGS 8
 BUILD_ASSERT_DECL(FLOW_N_REGS <= NXM_NX_MAX_REGS);
@@ -103,6 +103,7 @@ struct flow {
     ovs_be16 dl_type;           /* Ethernet frame type. */
     ovs_be16 tp_src;            /* TCP/UDP/SCTP source port. */
     ovs_be16 tp_dst;            /* TCP/UDP/SCTP destination port. */
+    ovs_be16 tcp_flags;         /* TCP flags. */
     uint8_t dl_src[6];          /* Ethernet source address. */
     uint8_t dl_dst[6];          /* Ethernet destination address. */
     uint8_t nw_proto;           /* IP protocol or low 8 bits of ARP opcode. */
@@ -111,7 +112,7 @@ struct flow {
     uint8_t arp_tha[6];         /* ARP/ND target hardware address. */
     uint8_t nw_ttl;             /* IP TTL/Hop Limit. */
     uint8_t nw_frag;            /* FLOW_FRAG_* flags. */
-    uint8_t zeros[6];
+    uint8_t zeros[4];
 };
 BUILD_ASSERT_DECL(sizeof(struct flow) % 4 == 0);
 
@@ -119,7 +120,7 @@ BUILD_ASSERT_DECL(sizeof(struct flow) % 4 == 0);
 
 /* Remember to update FLOW_WC_SEQ when changing 'struct flow'. */
 BUILD_ASSERT_DECL(sizeof(struct flow) == sizeof(struct flow_tnl) + 160 &&
-                  FLOW_WC_SEQ == 20);
+                  FLOW_WC_SEQ == 21);
 
 /* Represents the metadata fields of struct flow. */
 struct flow_metadata {

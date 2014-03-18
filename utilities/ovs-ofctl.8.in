@@ -608,6 +608,36 @@ Like the exact-match forms of \fBtp_src\fR and \fBtp_dst\fR described
 above, the bitwise match forms apply only when \fBdl_type\fR and
 \fBnw_proto\fR specify TCP or UDP or SCTP.
 .
+.IP \fBtcp_flags=\fIflags\fB/\fImask\fR
+Bitwise match on TCP flags.  The \fIflags\fR and \fImask\fR are 16-bit
+numbers written in decimal or in hexadecimal prefixed by \fB0x\fR.
+Each 1-bit in \fImask\fR requires that the corresponding bit in
+\fIport\fR must match.  Each 0-bit in \fImask\fR causes the corresponding
+bit to be ignored.
+.IP
+TCP protocol currently defines 9 flag bits, and additional 3 bits are
+reserved (must be transmitted as zero), see RFCs 793, 3168, and .
+The flags are, numbering from the least significant bit:
+.RS
+.IP "\fBbit 1: FIN\fR"
+No more data from sender.
+.IP "\fBbit 2: SYN\fR"
+Synchronize sequence numbers.
+.IP "\fBbit 3: RST\fR"
+Reset the connection.
+.IP "\fBbit 4: PSH\fR"
+Push function.
+.IP "\fBbit 5: ACK\fR"
+Acknowledgement field significant.
+.IP "\fBbit 6: URG\fR"
+Urgent pointer field significant.
+.IP "\fBbit 7: ECE\fR"
+ECN Echo.
+.IP "\fBbit 8: CWR\fR"
+Congestion Windows Reduced.
+.IP "\fBbit 9: NS\fR"
+Nonce Sum.
+.RE
 .IP \fBicmp_type=\fItype\fR
 .IQ \fBicmp_code=\fIcode\fR
 When \fBdl_type\fR and \fBnw_proto\fR specify ICMP or ICMPv6, \fItype\fR

@@ -256,6 +256,7 @@ parse_tcp(struct ofpbuf *packet, struct ofpbuf *b, struct flow *flow)
     if (tcp) {
         flow->tp_src = tcp->tcp_src;
         flow->tp_dst = tcp->tcp_dst;
+        flow->tcp_flags = tcp->tcp_ctl & htons(0x0fff);
         packet->l7 = b->data;
     }
 }
@@ -514,7 +515,7 @@ flow_zero_wildcards(struct flow *flow, const struct flow_wildcards *wildcards)
 void
 flow_get_metadata(const struct flow *flow, struct flow_metadata *fmd)
 {
-    BUILD_ASSERT_DECL(FLOW_WC_SEQ == 20);
+    BUILD_ASSERT_DECL(FLOW_WC_SEQ == 21);
 
     fmd->tun_id = flow->tunnel.tun_id;
     fmd->tun_src = flow->tunnel.ip_src;

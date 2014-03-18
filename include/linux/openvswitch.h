@@ -291,6 +291,8 @@ enum ovs_key_attr {
 	OVS_KEY_ATTR_MPLS = 62, /* array of struct ovs_key_mpls.
 				 * The implementation may restrict
 				 * the accepted length of the array. */
+	OVS_KEY_ATTR_TCP_FLAGS,	/* be16 TCP flags. */
+
 	__OVS_KEY_ATTR_MAX
 };
 
