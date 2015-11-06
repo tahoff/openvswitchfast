@@ -367,6 +367,9 @@ struct rule {
      * notes. */
     struct rule_actions *actions OVS_GUARDED;
 
+    /* OpenFlow actions. These actions are only executed when a rule expires */
+    struct rule_actions *timeout_actions OVS_GUARDED;
+
     /* In owning meter's 'rules' list.  An empty list if there is no meter. */
     struct list meter_list_node OVS_GUARDED_BY(ofproto_mutex);
 

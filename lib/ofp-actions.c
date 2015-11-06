@@ -405,7 +405,6 @@ ofpact_from_nxast(const union ofp_action *a, enum ofputil_action_code code,
         error = learn_from_openflow(
             ALIGNED_CAST(const struct nx_action_learn *, a), out);
         break;
-
     case OFPUTIL_NXAST_EXIT:
         ofpact_put_EXIT(out);
         break;
@@ -420,6 +419,7 @@ ofpact_from_nxast(const union ofp_action *a, enum ofputil_action_code code,
         break;
 
     case OFPUTIL_NXAST_FIN_TIMEOUT:
+        // Receipt of a FIN packet
         fin_timeout_from_openflow(
             (const struct nx_action_fin_timeout *) a, out);
         break;

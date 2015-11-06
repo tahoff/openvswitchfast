@@ -1366,6 +1366,7 @@ ofproto_run(struct ofproto *p)
 
         p->eviction_group_timer = time_msec() + 1000;
 
+        // Iterating through all of the tables
         for (i = 0; i < p->n_tables; i++) {
             struct oftable *table = &p->tables[i];
             struct eviction_group *evg;
@@ -2446,6 +2447,100 @@ rule_actions_create(const struct ofpact *ofpacts, size_t ofpacts_len)
     actions->meter_id = ofpacts_get_meter(ofpacts, ofpacts_len);
     return actions;
 }
+
+bool is_timeout_learn(const struct ofpact *act) {
+  if (act->type == OFPACT_LEARN) {
+      ofpact_learn *learn = ofpact_get_LEARN(act);
+      return learn->learn_on_timeout;
+  } else {
+      return false;
+  }
+}
+
+/* Creates and returns a new 'struct rule_actions', with a ref_count of 1,
+ * whose actions are a copy of from the 'ofpacts_len' bytes of 'ofpacts'. 
+ * This only returns the actions which take effect on timeout!
+ */
+struct rule_actions *
+rule_actions_create_timeout(const struct ofpact *ofpacts, size_t ofpacts_len)
+{
+    struct rule_actions *actions;
+
+    actions = xmalloc(sizeof *actions);
+    
+    // Iterate through the actions, incrementing upon seeing a timeout action
+    size_t timeout_actions = 0;
+    unsigned int i = 0;
+    for (i = 0; i < ofpacts_len; i++) {
+      if (is_timeout_learn(ofpacts[i])) {
+        timeout_actions += 1;
+      }
+    }
+    
+    atomic_init(&actions->ref_count, 1);
+    actions->ofpacts = xmemdup(ofpacts, timeout_actions);
+    
+    unsigned int num_added = 0;
+    unsigned int last_index_used = 0;
+    while (num_added < timeout_actions) {
+      for(i = last_index_used; i < ofpacts_len; i++) {
+        if (is_timeout_learn(ofpacts[i])) {
+          actions->ofpacts[num_added] = ofpacts[i];
+          last_index_used = i + 1;
+          num_added++;
+          break;
+        }
+        
+        last_index_used = i;
+      }
+    }
+    
+    actions->ofpacts_len = timeout_actions;
+    actions->meter_id = ofpacts_get_meter(ofpacts, timeout_actions);
+    return actions;
+}
+
+/* Creates and returns a new 'struct rule_actions', with a ref_count of 1,
+ * whose actions are a copy of from the 'ofpacts_len' bytes of 'ofpacts'. */
+struct rule_actions *
+rule_actions_create_active(const struct ofpact *ofpacts, size_t ofpacts_len)
+{
+    struct rule_actions *actions;
+
+    // Iterate through the actions, removing those which occur on timeout
+    size_t timeout_actions = 0;
+    unsigned int i = 0;
+    for (i = 0; i < ofpacts_len; i++) {
+      if (is_timeout_learn(ofpacts[i])) {
+        timeout_actions += 1;
+      }
+    }   
+
+    actions = xmalloc(sizeof *actions);
+    atomic_init(&actions->ref_count, 1);
+    actions->ofpacts = xmemdup(ofpacts, ofpacts_len - timeout_actions);
+    
+    // Remove all actions which occur on timeout
+    unsigned int num_added = 0;
+    unsigned int last_index_used = 0;
+    while (num_added < timeout_actions) {
+      for(i = last_index_used; i < ofpacts_len; i++) {
+        if (!is_timeout_learn(ofpacts[i])) {
+          actions->ofpacts[num_added] = ofpacts[i];
+          last_index_used = i + 1;
+          num_added++;
+          break;
+        }
+        
+        last_index_used = i;
+      }
+    }   
+    
+    actions->ofpacts_len = ofpacts_len - timeout_actions;
+    actions->meter_id = ofpacts_get_meter(ofpacts, ofpacts_len - timeout_actions);
+    return actions;
+}
+
 
 /* Increments 'actions''s ref_count. */
 void
@@ -3887,7 +3982,11 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
 
     *CONST_CAST(uint8_t *, &rule->table_id) = table - ofproto->tables;
     rule->send_flow_removed = (fm->flags & OFPUTIL_FF_SEND_FLOW_REM) != 0;
-    rule->actions = rule_actions_create(fm->ofpacts, fm->ofpacts_len);
+    
+    // Populate the active and timeout actions.
+    rule->timeout_actions = rule_actions_create_active(fm->ofpacts, fm->ofpacts_len);
+    rule->actions = rule_actions_create_active(fm->ofpacts, fm->ofpacts_len);
+    
     list_init(&rule->meter_list_node);
     rule->eviction_group = NULL;
     list_init(&rule->expirable);
@@ -4213,6 +4312,24 @@ ofproto_rule_expire(struct rule *rule, uint8_t reason)
 
     ovs_assert(reason == OFPRR_HARD_TIMEOUT || reason == OFPRR_IDLE_TIMEOUT
                || reason == OFPRR_DELETE);
+
+    // For a non-null, non-empty, set of timeout_actions, execute the actions.
+    if (rule->timeout_actions && rule->timeout_actions->ofpacts_len > 0) {
+        OFPACT_FOR_EACH (a, rule->timeout_actions->ofpacts, rule->timeout_actions->ofpacts_len) {
+            switch (a->type) {
+                case OFPACT_LEARN:
+                    // Create flow_mod
+                    struct ofputil_flow_mod fm;
+                    ofpact_learn *learn = ofpact_get_LEARN(a); 
+                  
+                    // Populate fm with the learn attributes
+                    timeout_learn_execute(learn, fm, rule->timeout_actions->ofpacts);  
+                    ofproto_dpif_flow_mod(ofproto, &fm);
+                    break;
+                // Do nothing in the default case, because it isn't supported.
+            }
+        }
+    }
 
     ofproto_rule_delete__(ofproto, rule, reason);
 }

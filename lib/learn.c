@@ -400,6 +400,104 @@ learn_execute(const struct ofpact_learn *learn, const struct flow *flow,
     fm->ofpacts_len = ofpacts->size;
 }
 
+void
+timeout_learn_execute(const struct ofpact_learn *learn, 
+                      struct ofputil_flow_mod *fm, struct ofpbuf *ofpacts)
+{
+    // TODO - Implement the behavior similar to learn_execute   
+    // Probably can't get flow, but it's only used in looking at the SRC_FIELD 
+    const struct ofpact_learn_spec *spec;
+    struct ofpact_resubmit *resubmit;
+
+    match_init_catchall(&fm->match);
+    fm->priority = learn->priority;
+    fm->cookie = htonll(0);
+    fm->cookie_mask = htonll(0);
+    fm->new_cookie = htonll(learn->cookie);
+    fm->modify_cookie = fm->new_cookie != htonll(UINT64_MAX);
+    fm->table_id = learn->table_id;
+    fm->command = OFPFC_MODIFY_STRICT;
+    fm->idle_timeout = learn->idle_timeout;
+    fm->hard_timeout = learn->hard_timeout;
+    fm->buffer_id = UINT32_MAX;
+    fm->out_port = OFPP_NONE;
+    fm->flags = learn->flags;
+    fm->ofpacts = NULL;
+    fm->ofpacts_len = 0;
+
+    if (learn->fin_idle_timeout || learn->fin_hard_timeout) {
+        struct ofpact_fin_timeout *oft;
+
+        oft = ofpact_put_FIN_TIMEOUT(ofpacts);
+        oft->fin_idle_timeout = learn->fin_idle_timeout;
+        oft->fin_hard_timeout = learn->fin_hard_timeout;
+    }
+
+    for (spec = learn->specs; spec < &learn->specs[learn->n_specs]; spec++) {
+        union mf_subvalue value;
+        int chunk, ofs;
+
+        // TODO Check whether or not I can do anything with value 
+        /*if (spec->src_type == NX_LEARN_SRC_FIELD) {
+            mf_read_subfield(&spec->src, flow, &value);
+        } else {
+            value = spec->src_imm;
+        }*/
+
+        value = spec->src_imm;
+
+        switch (spec->dst_type) {
+        case NX_LEARN_DST_MATCH:
+            mf_write_subfield(&spec->dst, &value, &fm->match);
+            break;
+
+        case NX_LEARN_DST_LOAD:
+            for (ofs = 0; ofs < spec->n_bits; ofs += chunk) {
+                struct ofpact_reg_load *load;
+
+                chunk = MIN(spec->n_bits - ofs, 64);
+
+                load = ofpact_put_REG_LOAD(ofpacts);
+                load->dst.field = spec->dst.field;
+                load->dst.ofs = spec->dst.ofs + ofs;
+                load->dst.n_bits = chunk;
+                bitwise_copy(&value, sizeof value, ofs,
+                             &load->subvalue, sizeof load->subvalue, 0,
+                             chunk);
+            }
+            break;
+
+        case NX_LEARN_DST_OUTPUT:
+            if (spec->n_bits <= 16
+                || is_all_zeros(value.u8, sizeof value - 2)) {
+                ofp_port_t port = u16_to_ofp(ntohs(value.be16[7]));
+
+                if (ofp_to_u16(port) < ofp_to_u16(OFPP_MAX)
+                    || port == OFPP_IN_PORT
+                    || port == OFPP_FLOOD
+                    || port == OFPP_LOCAL
+                    || port == OFPP_ALL) {
+                    ofpact_put_OUTPUT(ofpacts)->port = port;
+                }
+            }
+            break;
+
+        case NX_LEARN_DST_RESERVED:
+            resubmit = ofpact_put_RESUBMIT(ofpacts);
+            resubmit->ofpact.compat = OFPUTIL_NXAST_RESUBMIT_TABLE;
+            /* hard coded values */
+            resubmit->table_id = 2;
+            break; 
+
+        }
+    }
+    ofpact_pad(ofpacts);
+
+    fm->ofpacts = ofpacts->data;
+    fm->ofpacts_len = ofpacts->size;
+
+}
+
 /* Perform a bitwise-OR on 'wc''s fields that are relevant as sources in
  * the learn action 'learn'. */
 void
@@ -476,6 +574,8 @@ static char * WARN_UNUSED_RESULT
 learn_parse_spec(const char *orig, char *name, char *value,
                  struct ofpact_learn_spec *spec)
 {
+    // TODO - Need to modify to add some form of parsing!
+    
     if (mf_from_name(name)) {
         const struct mf_field *dst = mf_from_name(name);
         union mf_value imm;
@@ -589,7 +689,7 @@ learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
             learn->table_id = atoi(value);
             if (learn->table_id == 255) {
                 return xasprintf("%s: table id 255 not valid for `learn' "
-                                 "action", orig);
+                        "action", orig);
             }
         } else if (!strcmp(name, "priority")) {
             learn->priority = atoi(value);
@@ -603,6 +703,12 @@ learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
             learn->fin_hard_timeout = atoi(value);
         } else if (!strcmp(name, "cookie")) {
             learn->cookie = strtoull(value, NULL, 0);
+        }  else if (!strcmp(name, "learn_on_timeout"))
+            if (strcmp(value, "true")) {
+                learn->learn_on_timeout = true;
+            } else {
+                learn->learn_on_timeout = false;
+            }
         } else {
             struct ofpact_learn_spec *spec;
             char *error;
@@ -682,6 +788,11 @@ learn_format(const struct ofpact_learn *learn, struct ds *s)
     if (learn->cookie != 0) {
         ds_put_format(s, ",cookie=%#"PRIx64, learn->cookie);
     }
+    if (learn->learn_on_timeout) {
+        // TODO Ensure that this doesn't violate the print format
+        ds_put_format(s, ",learn_on_timeout=%s", "true");
+    }
+
 
     for (spec = learn->specs; spec < &learn->specs[learn->n_specs]; spec++) {
         ds_put_char(s, ',');

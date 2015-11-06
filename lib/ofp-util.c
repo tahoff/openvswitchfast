@@ -1491,12 +1491,16 @@ ofputil_decode_flow_mod(struct ofputil_flow_mod *fm,
     struct ofpbuf b;
     enum ofpraw raw;
 
+    // TODO - Need to add the decoding of the timeout actions. 
+
+    // Initialize b starting at oh, of length oh->length
     ofpbuf_use_const(&b, oh, ntohs(oh->length));
     raw = ofpraw_pull_assert(&b);
     if (raw == OFPRAW_OFPT11_FLOW_MOD) {
         /* Standard OpenFlow 1.1+ flow_mod. */
         const struct ofp11_flow_mod *ofm;
 
+        // Removes (sizeof *ofm) bytes from b)
         ofm = ofpbuf_pull(&b, sizeof *ofm);
 
         error = ofputil_pull_ofp11_match(&b, &fm->match, NULL);
@@ -1544,6 +1548,7 @@ ofputil_decode_flow_mod(struct ofputil_flow_mod *fm,
         }
         raw_flags = ofm->flags;
     } else {
+        // Not Standard OF 1.1+ flow_mod
         uint16_t command;
 
         if (raw == OFPRAW_OFPT10_FLOW_MOD) {
