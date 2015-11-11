@@ -418,7 +418,7 @@ struct ofpact_learn {
     uint8_t table_id;           /* Table to insert flow entry. */
     uint16_t fin_idle_timeout;  /* Idle timeout after FIN, if nonzero. */
     uint16_t fin_hard_timeout;  /* Hard timeout after FIN, if nonzero. */
-    bool learn_on_timeout;
+    uint8_t learn_on_timeout;
 
     unsigned int n_specs;
     struct ofpact_learn_spec specs[];

@@ -197,7 +197,7 @@ def parseStruct():
             # This is intentional
             pass
         else:
-            warn("%s needs %d bytes of tail padding" % (structName, shortage))
+            warn("%s of size %d needs %d bytes of tail padding" % (structName, size, shortage))
         size += shortage
     types[structName] = {"size": size, "alignment": alignment}
     return structName

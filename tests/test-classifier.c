@@ -401,7 +401,7 @@ compare_classifiers(struct classifier *cls, struct tcls *tcls)
     static const int confidence = 500;
     unsigned int i;
 
-    assert(classifier_count(cls) == tcls->n_rules);
+    ovs_assert(classifier_count(cls) == tcls->n_rules);
     for (i = 0; i < confidence; i++) {
         struct cls_rule *cr0, *cr1;
         struct flow flow;

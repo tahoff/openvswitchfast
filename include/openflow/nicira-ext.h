@@ -922,7 +922,7 @@ struct nx_action_learn {
     ovs_be64 cookie;            /* Cookie for new flow. */
     ovs_be16 flags;             /* Either 0 or OFPFF_SEND_FLOW_REM. */
     uint8_t table_id;           /* Table to insert flow entry. */
-    uint8_t pad;                /* Must be zero. */
+    uint8_t learn_on_timeout;  
     ovs_be16 fin_idle_timeout;  /* Idle timeout after FIN, if nonzero. */
     ovs_be16 fin_hard_timeout;  /* Hard timeout after FIN, if nonzero. */
     /* Followed by a sequence of flow_mod_spec elements, as described above,

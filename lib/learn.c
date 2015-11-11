@@ -87,9 +87,9 @@ learn_from_openflow(const struct nx_action_learn *nal, struct ofpbuf *ofpacts)
     struct ofpact_learn *learn;
     const void *p, *end;
 
-    if (nal->pad) {
+    /*if (nal->pad) {
         return OFPERR_OFPBAC_BAD_ARGUMENT;
-    }
+    }*/
 
     learn = ofpact_put_LEARN(ofpacts);
 
@@ -100,6 +100,7 @@ learn_from_openflow(const struct nx_action_learn *nal, struct ofpbuf *ofpacts)
     learn->table_id = nal->table_id;
     learn->fin_idle_timeout = ntohs(nal->fin_idle_timeout);
     learn->fin_hard_timeout = ntohs(nal->fin_hard_timeout);
+    learn->learn_on_timeout = nal->learn_on_timeout;
 
     /* We only support "send-flow-removed" for now. */
     switch (ntohs(nal->flags)) {
@@ -270,6 +271,7 @@ learn_to_nxast(const struct ofpact_learn *learn, struct ofpbuf *openflow)
     nal->cookie = htonll(learn->cookie);
     nal->flags = htons(learn->flags);
     nal->table_id = learn->table_id;
+    nal->learn_on_timeout = learn->learn_on_timeout;
 
     for (spec = learn->specs; spec < &learn->specs[learn->n_specs]; spec++) {
         put_u16(openflow, spec->n_bits | spec->dst_type | spec->src_type);
@@ -401,7 +403,7 @@ learn_execute(const struct ofpact_learn *learn, const struct flow *flow,
 }
 
 void
-timeout_learn_execute(const struct ofpact_learn *learn, 
+timeout_learn_execute(struct ofpact_learn *learn, 
                       struct ofputil_flow_mod *fm, struct ofpbuf *ofpacts)
 {
     // TODO - Implement the behavior similar to learn_execute   
@@ -678,6 +680,9 @@ learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
     char *name, *value;
 
     learn = ofpact_put_LEARN(ofpacts);
+
+    fprintf(stderr, "thoff: learn_parse__ ofpacts size=%i allocated=%i\n", ofpacts->size, ofpacts->allocated);
+    fprintf(stderr, "thoff: learn_parse__ sizeof(ofpact_learn)=%i\n", sizeof(*learn));
     learn->idle_timeout = OFP_FLOW_PERMANENT;
     learn->hard_timeout = OFP_FLOW_PERMANENT;
     learn->priority = OFP_DEFAULT_PRIORITY;
@@ -703,12 +708,13 @@ learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
             learn->fin_hard_timeout = atoi(value);
         } else if (!strcmp(name, "cookie")) {
             learn->cookie = strtoull(value, NULL, 0);
-        }  else if (!strcmp(name, "learn_on_timeout"))
-            if (strcmp(value, "true")) {
-                learn->learn_on_timeout = true;
+        } else if (!strcmp(name, "learn_on_timeout")) {
+            learn->learn_on_timeout = atoi(value);
+            /*if (!strcmp(value, "true")) {
+                learn->learn_on_timeout = 0x0;
             } else {
-                learn->learn_on_timeout = false;
-            }
+                learn->learn_on_timeout = 0x1;
+            }*/
         } else {
             struct ofpact_learn_spec *spec;
             char *error;
@@ -730,8 +736,10 @@ learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
             }
         }
     }
+
     ofpact_update_len(ofpacts, &learn->ofpact);
 
+    fprintf(stderr, "thoff: learn_parse__ ofpacts size=%i allocated=%i\n", ofpacts->size, ofpacts->allocated);
     return NULL;
 }
 
@@ -788,11 +796,14 @@ learn_format(const struct ofpact_learn *learn, struct ds *s)
     if (learn->cookie != 0) {
         ds_put_format(s, ",cookie=%#"PRIx64, learn->cookie);
     }
-    if (learn->learn_on_timeout) {
-        // TODO Ensure that this doesn't violate the print format
-        ds_put_format(s, ",learn_on_timeout=%s", "true");
-    }
 
+    fprintf(stderr, "learn_on_timeout value %s\n", learn->learn_on_timeout != 0 ? "true" : "false");
+    /*if (learn->learn_on_timeout != 0) {
+        ds_put_format(s, ",learn_on_timeout=%"PRIx64, 1);
+    } else {
+        ds_put_format(s, ",learn_on_timeout=%"PRIx64, 0);
+    }*/
+    ds_put_format(s, ",learn_on_timeout=%"PRIu8, learn->learn_on_timeout);
 
     for (spec = learn->specs; spec < &learn->specs[learn->n_specs]; spec++) {
         ds_put_char(s, ',');

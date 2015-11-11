@@ -7,8 +7,9 @@
 
 #ifndef __CHECKER__            /* Don't run sparse on anything in this file. */
 
-#include <assert.h>
+//#include <assert.h>
 #include "sflow_api.h"
+#include "util.h"
 
 static void resetSampleCollector(SFLReceiver *receiver);
 static void sendSample(SFLReceiver *receiver);
@@ -596,9 +597,9 @@ int sfl_receiver_writeFlowSample(SFLReceiver *receiver, SFL_FLOW_SAMPLE_TYPE *fs
     }
 
     // sanity check
-    assert(((u_char *)receiver->sampleCollector.datap
-	    - (u_char *)receiver->sampleCollector.data
-	    - receiver->sampleCollector.pktlen)  == (u_int32_t)packedSize);
+    ovs_assert(((u_char *)receiver->sampleCollector.datap
+	       - (u_char *)receiver->sampleCollector.data
+	       - receiver->sampleCollector.pktlen)  == (u_int32_t)packedSize);
 
     // update the pktlen
     receiver->sampleCollector.pktlen = (u_char *)receiver->sampleCollector.datap - (u_char *)receiver->sampleCollector.data;
@@ -739,9 +740,9 @@ int sfl_receiver_writeCountersSample(SFLReceiver *receiver, SFL_COUNTERS_SAMPLE_
 	}
     }
     // sanity check
-    assert(((u_char *)receiver->sampleCollector.datap
-	    - (u_char *)receiver->sampleCollector.data
-	    - receiver->sampleCollector.pktlen)  == (u_int32_t)packedSize);
+    ovs_assert(((u_char *)receiver->sampleCollector.datap
+	        - (u_char *)receiver->sampleCollector.data
+	        - receiver->sampleCollector.pktlen)  == (u_int32_t)packedSize);
 
     // update the pktlen
     receiver->sampleCollector.pktlen = (u_char *)receiver->sampleCollector.datap - (u_char *)receiver->sampleCollector.data;

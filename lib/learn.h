@@ -40,6 +40,8 @@ void learn_to_nxast(const struct ofpact_learn *, struct ofpbuf *openflow);
 
 void learn_execute(const struct ofpact_learn *, const struct flow *,
                    struct ofputil_flow_mod *, struct ofpbuf *ofpacts);
+void timeout_learn_execute(struct ofpact_learn *,
+                           struct ofputil_flow_mod *, struct ofpbuf *ofpacts);
 void learn_mask(const struct ofpact_learn *, struct flow_wildcards *);
 
 char *learn_parse(char *, struct ofpbuf *ofpacts) WARN_UNUSED_RESULT;

@@ -416,6 +416,10 @@ struct rule_actions {
 };
 
 struct rule_actions *rule_actions_create(const struct ofpact *, size_t);
+struct rule_actions *rule_actions_create_timeout(const struct ofpact *ofpacts,
+                                                 size_t ofpacts_len);
+struct rule_actions *rule_actions_create_active(const struct ofpact *ofpacts,
+                                                size_t ofpacts_len);
 void rule_actions_ref(struct rule_actions *);
 void rule_actions_unref(struct rule_actions *);
 

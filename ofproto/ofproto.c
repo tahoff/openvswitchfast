@@ -30,6 +30,7 @@
 #include "dynamic-string.h"
 #include "hash.h"
 #include "hmap.h"
+#include "learn.h"
 #include "meta-flow.h"
 #include "netdev.h"
 #include "nx-match.h"
@@ -39,6 +40,7 @@
 #include "ofp-print.h"
 #include "ofp-util.h"
 #include "ofpbuf.h"
+#include "ofproto-dpif.h"
 #include "ofproto-provider.h"
 #include "openflow/nicira-ext.h"
 #include "openflow/openflow.h"
@@ -268,6 +270,9 @@ static uint64_t pick_fallback_dpid(void);
 static void ofproto_destroy__(struct ofproto *);
 static void update_mtu(struct ofproto *, struct ofport *);
 static void meter_delete(struct ofproto *, uint32_t first, uint32_t last);
+
+/* Checks act->type for a learn action with the timeout boolean set to true */
+bool is_timeout_learn(const struct ofpact *act);
 
 /* unixctl. */
 static void ofproto_unixctl_init(void);
@@ -2440,6 +2445,7 @@ rule_actions_create(const struct ofpact *ofpacts, size_t ofpacts_len)
 {
     struct rule_actions *actions;
 
+    fprintf(stderr, "thoff: # rule_actions_create #  called\n");
     actions = xmalloc(sizeof *actions);
     atomic_init(&actions->ref_count, 1);
     actions->ofpacts = xmemdup(ofpacts, ofpacts_len);
@@ -2450,8 +2456,9 @@ rule_actions_create(const struct ofpact *ofpacts, size_t ofpacts_len)
 
 bool is_timeout_learn(const struct ofpact *act) {
   if (act->type == OFPACT_LEARN) {
-      ofpact_learn *learn = ofpact_get_LEARN(act);
-      return learn->learn_on_timeout;
+      struct ofpact_learn *learn;
+      learn = ofpact_get_LEARN(act);
+      return learn->learn_on_timeout != 0;
   } else {
       return false;
   }
@@ -2465,14 +2472,20 @@ struct rule_actions *
 rule_actions_create_timeout(const struct ofpact *ofpacts, size_t ofpacts_len)
 {
     struct rule_actions *actions;
+    size_t timeout_actions;
+    unsigned int i;
+    unsigned int num_added;
+    unsigned int last_index_used;
+
+    fprintf(stderr, "thoff: ~~~~~~ rule_actions_create_timeout called\n");
 
     actions = xmalloc(sizeof *actions);
     
     // Iterate through the actions, incrementing upon seeing a timeout action
-    size_t timeout_actions = 0;
-    unsigned int i = 0;
+    timeout_actions = 0;
+    i = 0;
     for (i = 0; i < ofpacts_len; i++) {
-      if (is_timeout_learn(ofpacts[i])) {
+      if (is_timeout_learn(&ofpacts[i])) {
         timeout_actions += 1;
       }
     }
@@ -2480,11 +2493,11 @@ rule_actions_create_timeout(const struct ofpact *ofpacts, size_t ofpacts_len)
     atomic_init(&actions->ref_count, 1);
     actions->ofpacts = xmemdup(ofpacts, timeout_actions);
     
-    unsigned int num_added = 0;
-    unsigned int last_index_used = 0;
+    num_added = 0;
+    last_index_used = 0;
     while (num_added < timeout_actions) {
       for(i = last_index_used; i < ofpacts_len; i++) {
-        if (is_timeout_learn(ofpacts[i])) {
+        if (is_timeout_learn(&ofpacts[i])) {
           actions->ofpacts[num_added] = ofpacts[i];
           last_index_used = i + 1;
           num_added++;
@@ -2506,12 +2519,16 @@ struct rule_actions *
 rule_actions_create_active(const struct ofpact *ofpacts, size_t ofpacts_len)
 {
     struct rule_actions *actions;
+    size_t timeout_actions;
+    unsigned int i;
+    unsigned int num_added;
+    unsigned int last_index_used;
 
     // Iterate through the actions, removing those which occur on timeout
-    size_t timeout_actions = 0;
-    unsigned int i = 0;
+    timeout_actions = 0;
+    i = 0;
     for (i = 0; i < ofpacts_len; i++) {
-      if (is_timeout_learn(ofpacts[i])) {
+      if (is_timeout_learn(&ofpacts[i])) {
         timeout_actions += 1;
       }
     }   
@@ -2521,11 +2538,11 @@ rule_actions_create_active(const struct ofpact *ofpacts, size_t ofpacts_len)
     actions->ofpacts = xmemdup(ofpacts, ofpacts_len - timeout_actions);
     
     // Remove all actions which occur on timeout
-    unsigned int num_added = 0;
-    unsigned int last_index_used = 0;
+    num_added = 0;
+    last_index_used = 0;
     while (num_added < timeout_actions) {
       for(i = last_index_used; i < ofpacts_len; i++) {
-        if (!is_timeout_learn(ofpacts[i])) {
+        if (!is_timeout_learn(&ofpacts[i])) {
           actions->ofpacts[num_added] = ofpacts[i];
           last_index_used = i + 1;
           num_added++;
@@ -3984,7 +4001,8 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
     rule->send_flow_removed = (fm->flags & OFPUTIL_FF_SEND_FLOW_REM) != 0;
     
     // Populate the active and timeout actions.
-    rule->timeout_actions = rule_actions_create_active(fm->ofpacts, fm->ofpacts_len);
+    fprintf(stderr, "thoff ----------- add_flow() about to create actions\n"); 
+    rule->timeout_actions = rule_actions_create_timeout(fm->ofpacts, fm->ofpacts_len);
     rule->actions = rule_actions_create_active(fm->ofpacts, fm->ofpacts_len);
     
     list_init(&rule->meter_list_node);
@@ -4309,24 +4327,75 @@ ofproto_rule_expire(struct rule *rule, uint8_t reason)
     OVS_REQUIRES(ofproto_mutex)
 {
     struct ofproto *ofproto = rule->ofproto;
+    struct ofpact *a;
+    struct ofputil_flow_mod fm;
+    struct ofpact_learn *learn;
+    
+    struct ofpbuf ofpacts_buf;
+    uint64_t ofpacts_stub[1024 / 8];
 
     ovs_assert(reason == OFPRR_HARD_TIMEOUT || reason == OFPRR_IDLE_TIMEOUT
                || reason == OFPRR_DELETE);
 
     // For a non-null, non-empty, set of timeout_actions, execute the actions.
     if (rule->timeout_actions && rule->timeout_actions->ofpacts_len > 0) {
-        OFPACT_FOR_EACH (a, rule->timeout_actions->ofpacts, rule->timeout_actions->ofpacts_len) {
+        //OFPACT_FOR_EACH (a, rule->timeout_actions->ofpacts, rule->timeout_actions->ofpacts_len) {
+        int i;
+        for (i = 0; i < rule->timeout_actions->ofpacts_len; i++) {
+            a = &rule->timeout_actions->ofpacts[i]; 
             switch (a->type) {
                 case OFPACT_LEARN:
+                    ofpbuf_use_stub(&ofpacts_buf, ofpacts_stub, sizeof ofpacts_stub);
+                    
                     // Create flow_mod
-                    struct ofputil_flow_mod fm;
-                    ofpact_learn *learn = ofpact_get_LEARN(a); 
+                    learn = ofpact_get_LEARN(a); 
                   
                     // Populate fm with the learn attributes
-                    timeout_learn_execute(learn, fm, rule->timeout_actions->ofpacts);  
-                    ofproto_dpif_flow_mod(ofproto, &fm);
+                    // TODO - 3rd arguemnt is ofpact*, but function takes in ofpbuf
+                    timeout_learn_execute(learn, &fm, &ofpacts_buf);
+                    // ofproto_flow_mod(struct ofproto *ofproto, struct ofputil_flow_mod *fm)
+                    ofproto_flow_mod(ofproto, &fm);
                     break;
                 // Do nothing in the default case, because it isn't supported.
+                case OFPACT_CONTROLLER:
+                case OFPACT_OUTPUT:
+                case OFPACT_ENQUEUE:
+                case OFPACT_OUTPUT_REG:
+                case OFPACT_BUNDLE:
+                case OFPACT_SET_VLAN_VID:
+                case OFPACT_SET_VLAN_PCP:
+                case OFPACT_STRIP_VLAN:
+                case OFPACT_PUSH_VLAN:
+                case OFPACT_SET_ETH_SRC:
+                case OFPACT_SET_ETH_DST:
+                case OFPACT_SET_IPV4_SRC:
+                case OFPACT_SET_IPV4_DST:
+                case OFPACT_SET_IPV4_DSCP:
+                case OFPACT_SET_L4_SRC_PORT:
+                case OFPACT_SET_L4_DST_PORT:
+                case OFPACT_REG_MOVE:
+                case OFPACT_REG_LOAD:
+                case OFPACT_STACK_PUSH:
+                case OFPACT_STACK_POP:
+                case OFPACT_DEC_TTL:
+                case OFPACT_SET_MPLS_TTL:
+                case OFPACT_DEC_MPLS_TTL:
+                case OFPACT_PUSH_MPLS:
+                case OFPACT_POP_MPLS:
+                case OFPACT_SET_TUNNEL:
+                case OFPACT_SET_QUEUE:
+                case OFPACT_POP_QUEUE:
+                case OFPACT_FIN_TIMEOUT:
+                case OFPACT_RESUBMIT:
+                case OFPACT_MULTIPATH:
+                case OFPACT_NOTE:
+                case OFPACT_EXIT:
+                case OFPACT_SAMPLE:
+                case OFPACT_METER:
+                case OFPACT_CLEAR_ACTIONS:
+                case OFPACT_WRITE_METADATA:
+                case OFPACT_GOTO_TABLE:
+                    break;
             }
         }
     }
@@ -4435,6 +4504,7 @@ handle_flow_mod__(struct ofproto *ofproto, struct ofconn *ofconn,
 {
     enum ofperr error;
 
+    fprintf(stderr, "thoff: handle_flow_mod__ called\n");
     ovs_mutex_lock(&ofproto_mutex);
     if (ofproto->n_pending < 50) {
         switch (fm->command) {

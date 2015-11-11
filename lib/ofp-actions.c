@@ -632,6 +632,8 @@ ofpacts_pull_actions(struct ofpbuf *openflow, unsigned int actions_len,
     const union ofp_action *actions;
     enum ofperr error;
 
+    fprintf(stderr, "thoff: ofpacts_pull_actions\n");
+
     ofpbuf_clear(ofpacts);
 
     if (actions_len % OFP_ACTION_ALIGN != 0) {
@@ -1501,6 +1503,7 @@ ofpact_sample_to_nxast(const struct ofpact_sample *os,
 static void
 ofpact_to_nxast(const struct ofpact *a, struct ofpbuf *out)
 {
+    fprintf(stderr, "thoff: ofpact_to_nxast called\n");
     switch (a->type) {
     case OFPACT_CONTROLLER:
         ofpact_controller_to_nxast(ofpact_get_CONTROLLER(a), out);

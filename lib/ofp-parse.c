@@ -774,6 +774,7 @@ parse_named_action(enum ofputil_action_code code,
         NOT_REACHED();
 
     case OFPUTIL_NXAST_LEARN:
+        fprintf(stderr, "thoff: parse_named_action calling learn_parse\n");
         error = learn_parse(arg, ofpacts);
         break;
 
@@ -852,6 +853,7 @@ str_to_ofpact__(char *pos, char *act, char *arg,
 {
     int code = ofputil_action_code_from_name(act);
     if (code >= 0) {
+        fprintf(stderr, "thoff: str_to_ofpact__ calling parse_named_action\n");
         return parse_named_action(code, arg, ofpacts, usable_protocols);
     } else if (!strcasecmp(act, "drop")) {
         if (n_actions) {
@@ -862,6 +864,7 @@ str_to_ofpact__(char *pos, char *act, char *arg,
                            "actions");
         }
     } else {
+        fprintf(stderr, "thoff: str_to_ofpact__ calling ofputil_port_from_string\n");
         ofp_port_t port;
         if (ofputil_port_from_string(act, &port)) {
             ofpact_put_OUTPUT(ofpacts)->port = port;
@@ -986,10 +989,13 @@ str_to_inst_ofpacts(char *str, struct ofpbuf *ofpacts,
     int prev_type = -1;
     int n_actions = 0;
 
+    fprintf(stderr, "thoff: str_to_inst_ofpacts() called\n");
+
     pos = str;
     while (ofputil_parse_key_value(&pos, &inst, &arg)) {
         type = ovs_instruction_type_from_name(inst);
         if (type < 0) {
+            fprintf(stderr, "thoff: str_to_inst_ofpacts calling str_to_ofpact__\n");
             char *error = str_to_ofpact__(pos, inst, arg, ofpacts, n_actions,
                                           usable_protocols);
             if (error) {
@@ -1007,6 +1013,7 @@ str_to_inst_ofpacts(char *str, struct ofpbuf *ofpacts,
             return xasprintf("%s isn't supported. Just write actions then "
                              "it is interpreted as apply_actions", inst);
         } else {
+            fprintf(stderr, "thoff: str_to_inst_ofpacts calling parse_named_instruction\n");
             char *error = parse_named_instruction(type, arg, ofpacts,
                                                   usable_protocols);
             if (error) {
@@ -1108,34 +1115,43 @@ parse_ofp_str__(struct ofputil_flow_mod *fm, int command, char *string,
     char *act_str = NULL;
     char *name;
 
+    fprintf(stderr, "--------------- parse_ofp_str__() called %s\n", string);
+
     *usable_protocols = OFPUTIL_P_ANY;
 
     switch (command) {
     case -1:
+        fprintf(stderr, "thoff: -1\n");
         fields = F_OUT_PORT;
         break;
 
     case OFPFC_ADD:
+        fprintf(stderr, "thoff: OFPFC_ADD\n");
         fields = F_ACTIONS | F_TIMEOUT | F_PRIORITY | F_FLAGS;
         break;
 
     case OFPFC_DELETE:
+        fprintf(stderr, "thoff: OFPFC_DELETE\n");
         fields = F_OUT_PORT;
         break;
 
     case OFPFC_DELETE_STRICT:
+        fprintf(stderr, "thoff: OFPFC_DELETE_STRICT\n");
         fields = F_OUT_PORT | F_PRIORITY;
         break;
 
     case OFPFC_MODIFY:
+        fprintf(stderr, "thoff: OFPFC_MODIFY\n");
         fields = F_ACTIONS | F_TIMEOUT | F_PRIORITY | F_FLAGS;
         break;
 
     case OFPFC_MODIFY_STRICT:
+        fprintf(stderr, "thoff: OFPFC_MODIFY_STRICT\n");
         fields = F_ACTIONS | F_TIMEOUT | F_PRIORITY | F_FLAGS;
         break;
 
     default:
+        fprintf(stderr, "thoff: NOT_REACHED()\n");
         NOT_REACHED();
     }
 
@@ -1252,6 +1268,7 @@ parse_ofp_str__(struct ofputil_flow_mod *fm, int command, char *string,
                     fm->modify_cookie = true;
                 }
             } else if (mf_from_name(name)) {
+                fprintf(stderr, "parse_field calling\n");
                 error = parse_field(mf_from_name(name), value, &fm->match,
                                     usable_protocols);
             } else if (!strcmp(name, "duration")
@@ -1296,6 +1313,7 @@ parse_ofp_str__(struct ofputil_flow_mod *fm, int command, char *string,
         struct ofpbuf ofpacts;
         char *error;
 
+        fprintf(stderr, "thoff: parse_ofp_str__() about to parse act_str\n");
         ofpbuf_init(&ofpacts, 32);
         error = str_to_inst_ofpacts(act_str, &ofpacts, usable_protocols);
         if (!error) {
@@ -1341,6 +1359,7 @@ parse_ofp_str(struct ofputil_flow_mod *fm, int command, const char *str_,
     char *error;
 
     error = parse_ofp_str__(fm, command, string, usable_protocols);
+    
     if (error) {
         fm->ofpacts = NULL;
         fm->ofpacts_len = 0;
@@ -1775,6 +1794,8 @@ parse_ofp_flow_stats_request_str(struct ofputil_flow_stats_request *fsr,
 {
     struct ofputil_flow_mod fm;
     char *error;
+
+    fprintf(stderr, "thoff: parse_ofp_flow_stats_request_str called\n");
 
     error = parse_ofp_str(&fm, -1, string, usable_protocols);
     if (error) {

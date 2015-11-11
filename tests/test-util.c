@@ -29,7 +29,6 @@
 #include "vlog.h"
 
 #undef NDEBUG
-#include <assert.h>
 
 static void
 check_log_2_floor(uint32_t x, int n)
@@ -195,14 +194,14 @@ test_popcount(int argc OVS_UNUSED, char *argv[] OVS_UNUSED)
             x |= bits[j];
             check_popcount(x, j + 1);
         }
-        assert(x == UINT32_MAX);
+        ovs_assert(x == UINT32_MAX);
 
         shuffle(bits, ARRAY_SIZE(bits));
         for (j = 31; j >= 0; j--) {
             x &= ~bits[j];
             check_popcount(x, j);
         }
-        assert(x == 0);
+        ovs_assert(x == 0);
     }
 }
 
