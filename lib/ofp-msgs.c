@@ -718,8 +718,6 @@ ofpraw_stats_request_to_reply(enum ofpraw raw, uint8_t version)
     struct ofphdrs hdrs;
     enum ofperr error;
 
-    fprintf(stderr, "thoff: ofpraw_stats_request_to_reply called\n");
-
     hdrs = instance->hdrs;
     switch ((enum ofp_version)hdrs.version) {
     case OFP10_VERSION:
@@ -958,8 +956,6 @@ ofpraw_from_ofphdrs(enum ofpraw *raw, const struct ofphdrs *hdrs)
 
     struct raw_instance *raw_hdrs;
     uint32_t hash;
-
-    fprintf(stderr, "thoff: ofpraw_from_ofphdrs called\n");
 
     ofpmsgs_init();
 

@@ -2464,99 +2464,118 @@ bool is_timeout_learn(const struct ofpact *act) {
   }
 }
 
+/*size_t get_timeout_learn_count(const struct ofpact *ofpacts, size_t ofpacts_len) {
+  int i;
+  size_t timeout_actions;  
+  i = 0;
+  timeout_actions = 0;
+
+  for (i = 0; i < ofpacts_len; i++) {
+    if (is_timeout_learn(&ofpacts[i])) {
+      timeout_actions += 1;
+    }
+  }
+
+  return timeout_actions;
+}
+
+size_t get_timeout_learn_size(const struct ofpact *ofpacts, size_t ofpacts_len) {
+  size_t accumulated_size;
+  int i;
+  i = 0;
+  accumulated_size = 0;
+
+  for (i = 0; i < ofpacts_len; i++) {
+    if (is_timeout_learn(&ofpacts[i])) {
+      accumulated_size += ofpacts[i].len;
+    }
+  }
+
+  if (!(accumulated_size % 16 == 0)) { 
+    accumulated_size += 8;
+  }
+
+  return accumulated_size;
+}*/
+
 /* Creates and returns a new 'struct rule_actions', with a ref_count of 1,
  * whose actions are a copy of from the 'ofpacts_len' bytes of 'ofpacts'. 
  * This only returns the actions which take effect on timeout!
  */
-struct rule_actions *
+/*struct rule_actions *
 rule_actions_create_timeout(const struct ofpact *ofpacts, size_t ofpacts_len)
 {
     struct rule_actions *actions;
     size_t timeout_actions;
     unsigned int i;
     unsigned int num_added;
-    unsigned int last_index_used;
+    size_t timeout_learn_size;
+    timeout_learn_size = get_timeout_learn_size(ofpacts, ofpacts_len);
 
     fprintf(stderr, "thoff: ~~~~~~ rule_actions_create_timeout called\n");
 
     actions = xmalloc(sizeof *actions);
     
     // Iterate through the actions, incrementing upon seeing a timeout action
-    timeout_actions = 0;
+    timeout_actions = get_timeout_learn_count(ofpacts, ofpacts_len);
+    fprintf(stderr, "thoff: timeout_actions=%u ofpacts_len=%u\n", timeout_actions, ofpacts_len);
     i = 0;
-    for (i = 0; i < ofpacts_len; i++) {
-      if (is_timeout_learn(&ofpacts[i])) {
-        timeout_actions += 1;
-      }
-    }
     
     atomic_init(&actions->ref_count, 1);
-    actions->ofpacts = xmemdup(ofpacts, timeout_actions);
+
+    fprintf(stderr, "timeout_learn_size=%u\n", timeout_learn_size);
+    actions->ofpacts = xmemdup(ofpacts, timeout_learn_size);
     
     num_added = 0;
-    last_index_used = 0;
-    while (num_added < timeout_actions) {
-      for(i = last_index_used; i < ofpacts_len; i++) {
-        if (is_timeout_learn(&ofpacts[i])) {
-          actions->ofpacts[num_added] = ofpacts[i];
-          last_index_used = i + 1;
-          num_added++;
-          break;
-        }
-        
-        last_index_used = i;
+    for(i = 0; i < ofpacts_len; i++) {
+      if (is_timeout_learn(&ofpacts[i])) {
+        actions->ofpacts[num_added] = ofpacts[i];
+        num_added++;
+        break;
       }
     }
     
-    actions->ofpacts_len = timeout_actions;
-    actions->meter_id = ofpacts_get_meter(ofpacts, timeout_actions);
+    actions->ofpacts_len = timeout_learn_size; 
+    actions->meter_id = ofpacts_get_meter(ofpacts, timeout_learn_size);
     return actions;
-}
+}*/
 
 /* Creates and returns a new 'struct rule_actions', with a ref_count of 1,
  * whose actions are a copy of from the 'ofpacts_len' bytes of 'ofpacts'. */
-struct rule_actions *
+/*struct rule_actions *
 rule_actions_create_active(const struct ofpact *ofpacts, size_t ofpacts_len)
 {
     struct rule_actions *actions;
     size_t timeout_actions;
     unsigned int i;
     unsigned int num_added;
-    unsigned int last_index_used;
+    size_t timeout_learn_size;
+    timeout_learn_size = get_timeout_learn_size(ofpacts, ofpacts_len);
 
     // Iterate through the actions, removing those which occur on timeout
-    timeout_actions = 0;
+    timeout_actions = get_timeout_learn_count(ofpacts, ofpacts_len);
+    fprintf(stderr, "thoff: timeout_actions=%u ofpacts_len=%u\n", timeout_actions, ofpacts_len);
     i = 0;
-    for (i = 0; i < ofpacts_len; i++) {
-      if (is_timeout_learn(&ofpacts[i])) {
-        timeout_actions += 1;
-      }
-    }   
 
     actions = xmalloc(sizeof *actions);
     atomic_init(&actions->ref_count, 1);
-    actions->ofpacts = xmemdup(ofpacts, ofpacts_len - timeout_actions);
+    fprintf(stderr, "timeout_learn_size=%u\n", timeout_learn_size);
+    actions->ofpacts = xmemdup(ofpacts, ofpacts_len - timeout_learn_size);
     
     // Remove all actions which occur on timeout
     num_added = 0;
-    last_index_used = 0;
-    while (num_added < timeout_actions) {
-      for(i = last_index_used; i < ofpacts_len; i++) {
-        if (!is_timeout_learn(&ofpacts[i])) {
-          actions->ofpacts[num_added] = ofpacts[i];
-          last_index_used = i + 1;
-          num_added++;
-          break;
-        }
-        
-        last_index_used = i;
+    for(i = 0; i < ofpacts_len; i++) {
+      if (!is_timeout_learn(&ofpacts[i])) {
+        actions->ofpacts[num_added] = ofpacts[i];
+        num_added++;
+        break;
       }
-    }   
+    }
     
-    actions->ofpacts_len = ofpacts_len - timeout_actions;
-    actions->meter_id = ofpacts_get_meter(ofpacts, ofpacts_len - timeout_actions);
+    actions->ofpacts_len = ofpacts_len - timeout_learn_size;
+    actions->meter_id = ofpacts_get_meter(ofpacts, ofpacts_len - timeout_learn_size);
     return actions;
-}
+}*/
 
 
 /* Increments 'actions''s ref_count. */
@@ -4002,8 +4021,8 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
     
     // Populate the active and timeout actions.
     fprintf(stderr, "thoff ----------- add_flow() about to create actions\n"); 
-    rule->timeout_actions = rule_actions_create_timeout(fm->ofpacts, fm->ofpacts_len);
-    rule->actions = rule_actions_create_active(fm->ofpacts, fm->ofpacts_len);
+    //rule->timeout_actions = rule_actions_create_timeout(fm->ofpacts, fm->ofpacts_len);
+    rule->actions = rule_actions_create(fm->ofpacts, fm->ofpacts_len);
     
     list_init(&rule->meter_list_node);
     rule->eviction_group = NULL;
@@ -4020,13 +4039,16 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
     }
 
     /* Insert rule. */
+    fprintf(stderr, "thoff ---- add_flow() calling oftable_insert_rule \n");
     oftable_insert_rule(rule);
+    fprintf(stderr, "thoff ---- add_flow() oftable_insert_rule returned \n");
 
     group = ofopgroup_create(ofproto, ofconn, request, fm->buffer_id);
     ofoperation_create(group, rule, OFOPERATION_ADD, 0);
     ofproto->ofproto_class->rule_insert(rule);
     ofopgroup_submit(group);
 
+    fprintf(stderr, "thoff ---- add_flow() returinging \n");
     return error;
 }
 
@@ -4330,6 +4352,7 @@ ofproto_rule_expire(struct rule *rule, uint8_t reason)
     struct ofpact *a;
     struct ofputil_flow_mod fm;
     struct ofpact_learn *learn;
+    struct flow flow;
     
     struct ofpbuf ofpacts_buf;
     uint64_t ofpacts_stub[1024 / 8];
@@ -4337,12 +4360,13 @@ ofproto_rule_expire(struct rule *rule, uint8_t reason)
     ovs_assert(reason == OFPRR_HARD_TIMEOUT || reason == OFPRR_IDLE_TIMEOUT
                || reason == OFPRR_DELETE);
 
+    fprintf(stderr, "ofproto_rule_expire called\n");
     // For a non-null, non-empty, set of timeout_actions, execute the actions.
-    if (rule->timeout_actions && rule->timeout_actions->ofpacts_len > 0) {
+    if (rule->actions && rule->actions->ofpacts_len > 0) {
         //OFPACT_FOR_EACH (a, rule->timeout_actions->ofpacts, rule->timeout_actions->ofpacts_len) {
         int i;
-        for (i = 0; i < rule->timeout_actions->ofpacts_len; i++) {
-            a = &rule->timeout_actions->ofpacts[i]; 
+        for (i = 0; i < rule->actions->ofpacts_len; i++) {
+            a = &rule->actions->ofpacts[i]; 
             switch (a->type) {
                 case OFPACT_LEARN:
                     ofpbuf_use_stub(&ofpacts_buf, ofpacts_stub, sizeof ofpacts_stub);
@@ -4350,11 +4374,20 @@ ofproto_rule_expire(struct rule *rule, uint8_t reason)
                     // Create flow_mod
                     learn = ofpact_get_LEARN(a); 
                   
+                    if (!learn->learn_on_timeout) {
+                        continue;                    
+                    }
+
                     // Populate fm with the learn attributes
                     // TODO - 3rd arguemnt is ofpact*, but function takes in ofpbuf
+                    ovs_mutex_unlock(&ofproto_mutex);
                     timeout_learn_execute(learn, &fm, &ofpacts_buf);
                     // ofproto_flow_mod(struct ofproto *ofproto, struct ofputil_flow_mod *fm)
                     ofproto_flow_mod(ofproto, &fm);
+                    ovs_mutex_trylock(&ofproto_mutex);
+                    break;
+                case OFPACT_REG_LOAD:
+                    nxm_execute_reg_load(ofpact_get_REG_LOAD(a), &flow);
                     break;
                 // Do nothing in the default case, because it isn't supported.
                 case OFPACT_CONTROLLER:
@@ -4374,7 +4407,7 @@ ofproto_rule_expire(struct rule *rule, uint8_t reason)
                 case OFPACT_SET_L4_SRC_PORT:
                 case OFPACT_SET_L4_DST_PORT:
                 case OFPACT_REG_MOVE:
-                case OFPACT_REG_LOAD:
+                
                 case OFPACT_STACK_PUSH:
                 case OFPACT_STACK_POP:
                 case OFPACT_DEC_TTL:
@@ -4506,6 +4539,7 @@ handle_flow_mod__(struct ofproto *ofproto, struct ofconn *ofconn,
 
     fprintf(stderr, "thoff: handle_flow_mod__ called\n");
     ovs_mutex_lock(&ofproto_mutex);
+    fprintf(stderr, "thoff: handle_flow_mod__ lock acquired\n");
     if (ofproto->n_pending < 50) {
         switch (fm->command) {
         case OFPFC_ADD:

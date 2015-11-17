@@ -194,6 +194,7 @@ learn_check(const struct ofpact_learn *learn, const struct flow *flow)
         if (spec->src_type == NX_LEARN_SRC_FIELD) {
             error = mf_check_src(&spec->src, flow);
             if (error) {
+                fprintf(stderr, "thoff: learn_check err1\n");
                 return error;
             }
         }
@@ -203,6 +204,7 @@ learn_check(const struct ofpact_learn *learn, const struct flow *flow)
         case NX_LEARN_DST_MATCH:
             error = mf_check_src(&spec->dst, &match.flow);
             if (error) {
+                fprintf(stderr, "thoff: learn_check err2\n");
                 return error;
             }
 
@@ -212,6 +214,7 @@ learn_check(const struct ofpact_learn *learn, const struct flow *flow)
         case NX_LEARN_DST_LOAD:
             error = mf_check_dst(&spec->dst, &match.flow);
             if (error) {
+                fprintf(stderr, "thoff: learn_check err3\n");
                 return error;
             }
             break;
@@ -314,6 +317,10 @@ void
 learn_execute(const struct ofpact_learn *learn, const struct flow *flow,
               struct ofputil_flow_mod *fm, struct ofpbuf *ofpacts)
 {
+    if (learn->learn_on_timeout) {
+        return;
+    }
+
     const struct ofpact_learn_spec *spec;
     struct ofpact_resubmit *resubmit;
 
