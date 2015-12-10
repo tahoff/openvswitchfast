@@ -80,6 +80,8 @@ lib_libopenvswitch_a_SOURCES = \
 	lib/latch.h \
 	lib/learn.c \
 	lib/learn.h \
+	lib/learn_delete.c \
+	lib/learn_delete.h \
 	lib/learning-switch.c \
 	lib/learning-switch.h \
 	lib/list.c \
@@ -199,7 +201,9 @@ lib_libopenvswitch_a_SOURCES = \
 	lib/svec.h \
 	lib/table.c \
 	lib/table.h \
-	lib/timer.c \
+	lib/timeout_act.c \
+    lib/timeout_act.h \
+    lib/timer.c \
 	lib/timer.h \
 	lib/timeval.c \
 	lib/timeval.h \

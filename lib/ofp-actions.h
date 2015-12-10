@@ -88,6 +88,7 @@
     DEFINE_OFPACT(RESUBMIT,        ofpact_resubmit,      ofpact)    \
     DEFINE_OFPACT(LEARN,           ofpact_learn,         specs)     \
     DEFINE_OFPACT(TIMEOUT_ACT,     ofpact_timeout_act,   ofpacts)   \
+    DEFINE_OFPACT(LEARN_DELETE,    ofpact_learn_delete,  specs)     \
                                                                     \
     /* Arithmetic. */                                               \
     DEFINE_OFPACT(MULTIPATH,       ofpact_multipath,     ofpact)    \
@@ -420,6 +421,21 @@ struct ofpact_learn {
     uint16_t fin_idle_timeout;  /* Idle timeout after FIN, if nonzero. */
     uint16_t fin_hard_timeout;  /* Hard timeout after FIN, if nonzero. */
     uint8_t learn_on_timeout;
+
+    unsigned int n_specs;
+    struct ofpact_learn_spec specs[];
+};
+
+/* OFPACT_LEARN_DELETE.
+ *
+ * Used for NXAST_LEARN_DELETE. */
+struct ofpact_learn_delete {
+    struct ofpact ofpact;
+
+    uint16_t priority;          /* Priority level of flow entry. */
+    uint64_t cookie;            /* Cookie for new flow. */
+    enum ofputil_flow_mod_flags flags;
+    uint8_t table_id;           /* Table to insert flow entry. */
 
     unsigned int n_specs;
     struct ofpact_learn_spec specs[];

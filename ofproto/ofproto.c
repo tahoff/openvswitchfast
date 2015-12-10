@@ -31,6 +31,7 @@
 #include "hash.h"
 #include "hmap.h"
 #include "learn.h"
+#include "learn_delete.h"
 #include "meta-flow.h"
 #include "netdev.h"
 #include "nx-match.h"

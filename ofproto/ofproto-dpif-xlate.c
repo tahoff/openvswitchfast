@@ -31,6 +31,7 @@
 #include "in-band.h"
 #include "lacp.h"
 #include "learn.h"
+#include "learn_delete.h"
 #include "list.h"
 #include "mac-learning.h"
 #include "meta-flow.h"
@@ -2115,6 +2116,28 @@ xlate_learn_action(struct xlate_ctx *ctx,
 }
 
 static void
+xlate_learn_delete_action(struct xlate_ctx *ctx,
+                          const struct ofpact_learn_delete *learn)
+{
+    uint64_t ofpacts_stub[1024 / 8];
+    struct ofputil_flow_mod fm;
+    struct ofpbuf ofpacts;
+
+    ctx->xout->has_learn = true;
+
+    learn_delete_mask(learn, &ctx->xout->wc);
+
+    if (!ctx->xin->may_learn) {
+        return;
+    }
+
+    ofpbuf_use_stub(&ofpacts, ofpacts_stub, sizeof ofpacts_stub);
+    learn_delete_execute(learn, &ctx->xin->flow, &fm, &ofpacts);
+    ofproto_dpif_flow_mod(ctx->xbridge->ofproto, &fm);
+    ofpbuf_uninit(&ofpacts);
+}
+
+static void
 xlate_timeout_act_action(struct xlate_ctx *ctx,
                          const struct ofpact_timeout_act *act) {
    // do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
@@ -2359,6 +2382,10 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
 
         case OFPACT_LEARN:
             xlate_learn_action(ctx, ofpact_get_LEARN(a));
+            break;
+ 
+        case OFPACT_LEARN_DELETE:
+            xlate_learn_delete_action(ctx, ofpact_get_LEARN_DELETE(a));
             break;
  
         case OFPACT_TIMEOUT_ACT:

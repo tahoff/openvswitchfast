@@ -32,6 +32,7 @@
 #include "dynamic-string.h"
 #include "flow.h"
 #include "learn.h"
+#include "learn_delete.h"
 #include "multipath.h"
 #include "meta-flow.h"
 #include "netdev.h"

@@ -5,6 +5,7 @@
 #include "byte-order.h"
 #include "dynamic-string.h"
 #include "learn.h"
+#include "learn_delete.h"
 #include "match.h"
 #include "meta-flow.h"
 #include "nx-match.h"

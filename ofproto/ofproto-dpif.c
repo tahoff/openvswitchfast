@@ -35,6 +35,7 @@
 #include "hmapx.h"
 #include "lacp.h"
 #include "learn.h"
+#include "learn_delete.h"
 #include "mac-learning.h"
 #include "meta-flow.h"
 #include "multipath.h"
