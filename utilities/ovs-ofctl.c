@@ -1108,6 +1108,14 @@ ofctl_flow_mod__(const char *remote, struct ofputil_flow_mod *fms,
 
         //fprintf(stderr, "thoff: ofctl_flow_mod__ calling transact_noreply\n");
         transact_noreply(vconn, ofputil_encode_flow_mod(fm, protocol));
+        
+        int i;
+        fprintf(stderr, "... ofctl_flow_mod ... \n");
+        for (i = 0; i < fm->ofpacts_len; i++) {
+            fprintf(stderr, "%d ", *(((char *) fm->ofpacts) + i));
+        }
+        fprintf(stderr, "...... \n");
+        
         free(fm->ofpacts);
     }
     vconn_close(vconn);
@@ -1147,7 +1155,8 @@ ofctl_flow_mod(int argc, char *argv[], uint16_t command)
         if (error) {
             ovs_fatal(0, "%s", error);
         }
-        fprintf(stderr, "thoff: ofctl_flow_mod calling ofctl_flow_mod__\n");
+        fprintf(stderr,
+                "thoff: ofctl_flow_mod calling ofctl_flow_mod__ ofpacts_len=%u\n", fm.ofpacts_len);
         ofctl_flow_mod__(argv[1], &fm, 1, usable_protocols);
     }
 }

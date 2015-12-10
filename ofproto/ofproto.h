@@ -36,12 +36,14 @@ struct bfd_cfg;
 struct cfm_settings;
 struct cls_rule;
 struct netdev;
+struct ofpact_timeout_act;
 struct ofproto;
 struct ofport;
 struct shash;
 struct simap;
 struct smap;
 struct netdev_stats;
+struct rule;
 
 struct ofproto_controller_info {
     bool is_connected;
@@ -436,6 +438,9 @@ int ofproto_port_set_realdev(struct ofproto *, ofp_port_t vlandev_ofp_port,
 
 uint32_t ofproto_get_provider_meter_id(const struct ofproto *,
                                        uint32_t of_meter_id);
+
+void timeout_act_execute(const struct ofpact_timeout_act *, struct flow *,
+                         struct rule *);
 
 #ifdef  __cplusplus
 }

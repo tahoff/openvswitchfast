@@ -87,6 +87,7 @@
     /* Flow table interaction. */                                   \
     DEFINE_OFPACT(RESUBMIT,        ofpact_resubmit,      ofpact)    \
     DEFINE_OFPACT(LEARN,           ofpact_learn,         specs)     \
+    DEFINE_OFPACT(TIMEOUT_ACT,     ofpact_timeout_act,   ofpacts)   \
                                                                     \
     /* Arithmetic. */                                               \
     DEFINE_OFPACT(MULTIPATH,       ofpact_multipath,     ofpact)    \
@@ -424,6 +425,15 @@ struct ofpact_learn {
     struct ofpact_learn_spec specs[];
 };
 
+/* OFPACT_TIMEOUT_ACT
+ *
+ * Used for NXAST_TIMEOUT_ACT. */
+struct ofpact_timeout_act {
+    struct ofpact ofpact;
+    unsigned int ofpacts_len;
+    struct ofpact *ofpacts;
+};
+
 /* OFPACT_MULTIPATH.
  *
  * Used for NXAST_MULTIPATH. */
@@ -526,6 +536,7 @@ uint32_t ofpacts_get_meter(const struct ofpact[], size_t ofpacts_len);
  *
  * (For parsing ofpacts, see ofp-parse.h.) */
 void ofpacts_format(const struct ofpact[], size_t ofpacts_len, struct ds *);
+void ofpact_format(const struct ofpact *a, struct ds *s);
 
 /* Internal use by the helpers below. */
 void ofpact_init(struct ofpact *, enum ofpact_type, size_t len);

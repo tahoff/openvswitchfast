@@ -1491,8 +1491,6 @@ ofputil_decode_flow_mod(struct ofputil_flow_mod *fm,
     struct ofpbuf b;
     enum ofpraw raw;
 
-    // TODO - Need to add the decoding of the timeout actions. 
-
     // Initialize b starting at oh, of length oh->length
     ofpbuf_use_const(&b, oh, ntohs(oh->length));
     raw = ofpraw_pull_assert(&b);
@@ -1549,11 +1547,11 @@ ofputil_decode_flow_mod(struct ofputil_flow_mod *fm,
         }
         raw_flags = ofm->flags;
     } else {
-        fprintf(stderr, "thoff: decode_flow_mod 2\n");
         // Not Standard OF 1.1+ flow_mod
         uint16_t command;
 
         if (raw == OFPRAW_OFPT10_FLOW_MOD) {
+            fprintf(stderr, "thoff: decode_flow_mod 2\n");
             /* Standard OpenFlow 1.0 flow_mod. */
             const struct ofp10_flow_mod *ofm;
 
@@ -1563,6 +1561,13 @@ ofputil_decode_flow_mod(struct ofputil_flow_mod *fm,
             /* Translate the rule. */
             ofputil_match_from_ofp10_match(&ofm->match, &fm->match);
             ofputil_normalize_match(&fm->match);
+
+            int i;
+            fprintf(stderr, ".. ofputil_decode_flow_mod b.data ... ");
+            for (i = 0; i < b.size; i++) {
+                fprintf(stderr, "%d ", *(((char *) b.data) + i));
+            }
+            fprintf(stderr, "......\n");
 
             /* Now get the actions. */
             error = ofpacts_pull_openflow10(&b, b.size, ofpacts);
@@ -1651,6 +1656,13 @@ ofputil_decode_flow_mod(struct ofputil_flow_mod *fm,
                 ? OFPERR_OFPFMFC_BAD_EMERG_TIMEOUT
                 : OFPERR_OFPFMFC_TABLE_FULL);
     }
+
+    int i;
+    fprintf(stderr, "... handle_flow_mod ... \n");
+    for (i = 0; i < fm->ofpacts_len; i++) {
+        fprintf(stderr, "%d ", *(((char *) fm->ofpacts) + i));
+    }
+    fprintf(stderr, "...... \n");
 
     return 0;
 }
@@ -2047,6 +2059,7 @@ ofputil_encode_flow_mod(const struct ofputil_flow_mod *fm,
     case OFPUTIL_P_OF13_OXM: {
         struct ofp11_flow_mod *ofm;
         int tailroom;
+        fprintf(stderr, "ofputil_encode_flow_mod OFPUTIL_P_OF11_STD OFPUTIL_P_OF12_OXM OFPUTIL_P_OF13_OXM \n");
 
         tailroom = ofputil_match_typical_len(protocol) + fm->ofpacts_len;
         msg = ofpraw_alloc(OFPRAW_OFPT11_FLOW_MOD, version, tailroom);
@@ -2079,6 +2092,9 @@ ofputil_encode_flow_mod(const struct ofputil_flow_mod *fm,
     case OFPUTIL_P_OF10_STD_TID: {
         struct ofp10_flow_mod *ofm;
 
+        fprintf(stderr, "ofputil_encode_flow_mod OFPUTIL_P_OF10_STD OFPUTIL_P_OF10_STD_TID\n");
+        fprintf(stderr, "ofputil_encode_flow_mod fm->ofpacts_len=%u\n", fm->ofpacts_len);
+
         msg = ofpraw_alloc(OFPRAW_OFPT10_FLOW_MOD, OFP10_VERSION,
                            fm->ofpacts_len);
         ofm = ofpbuf_put_zeros(msg, sizeof *ofm);
@@ -2092,6 +2108,8 @@ ofputil_encode_flow_mod(const struct ofputil_flow_mod *fm,
         ofm->out_port = htons(ofp_to_u16(fm->out_port));
         ofm->flags = raw_flags;
         ofpacts_put_openflow10(fm->ofpacts, fm->ofpacts_len, msg);
+        fprintf(stderr, "ofputil_encode_flow_mod fm->ofpacts_len=%u\n", fm->ofpacts_len);
+        
         break;
     }
 
@@ -2125,6 +2143,13 @@ ofputil_encode_flow_mod(const struct ofputil_flow_mod *fm,
     }
 
     ofpmsg_update_length(msg);
+    int i;
+    fprintf(stderr, "... encode_flow_mod ... \n");
+    for (i = 0; i < fm->ofpacts_len; i++) {
+        fprintf(stderr, "%d ", *(((char *) fm->ofpacts) + i));
+    }
+    fprintf(stderr, "...... \n");
+
     return msg;
 }
 

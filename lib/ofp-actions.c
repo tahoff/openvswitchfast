@@ -26,6 +26,7 @@
 #include "nx-match.h"
 #include "ofp-util.h"
 #include "ofpbuf.h"
+#include "timeout_act.h"
 #include "util.h"
 #include "vlog.h"
 
@@ -313,6 +314,7 @@ ofpact_from_nxast(const union ofp_action *a, enum ofputil_action_code code,
     const struct nx_action_set_queue *nasq;
     const struct nx_action_note *nan;
     const struct nx_action_set_tunnel64 *nast64;
+    const struct nx_action_timeout_act *nat;
     const struct nx_action_write_metadata *nawm;
     struct ofpact_tunnel *tunnel;
     enum ofperr error = 0;
@@ -405,6 +407,14 @@ ofpact_from_nxast(const union ofp_action *a, enum ofputil_action_code code,
         error = learn_from_openflow(
             ALIGNED_CAST(const struct nx_action_learn *, a), out);
         break;
+
+    case OFPUTIL_NXAST_TIMEOUT_ACT:
+        //nat = (const struct nx_action_timeout_act *) a;
+        //error = timeout_act_from_openflow(nat, out);
+        error = timeout_act_from_openflow(
+            ALIGNED_CAST(const struct nx_action_timeout_act *, a), out);
+        break;
+
     case OFPUTIL_NXAST_EXIT:
         ofpact_put_EXIT(out);
         break;
@@ -632,7 +642,7 @@ ofpacts_pull_actions(struct ofpbuf *openflow, unsigned int actions_len,
     const union ofp_action *actions;
     enum ofperr error;
 
-    fprintf(stderr, "thoff: ofpacts_pull_actions\n");
+    fprintf(stderr, "thoff: ofpacts_pull_actions %u\n", actions_len);
 
     ofpbuf_clear(ofpacts);
 
@@ -977,6 +987,7 @@ ovs_instruction_type_from_ofpact_type(enum ofpact_type type)
     case OFPACT_FIN_TIMEOUT:
     case OFPACT_RESUBMIT:
     case OFPACT_LEARN:
+    case OFPACT_TIMEOUT_ACT:
     case OFPACT_MULTIPATH:
     case OFPACT_NOTE:
     case OFPACT_EXIT:
@@ -1207,6 +1218,9 @@ ofpact_check__(const struct ofpact *a, struct flow *flow, ofp_port_t max_ports,
 {
     const struct ofpact_enqueue *enqueue;
 
+    fprintf(stderr, "ofpact_check__ a=%p flow=%p max_ports=%u table_id=%u a->len=%u\n",
+            a, flow, max_ports, table_id, a->len);
+
     switch (a->type) {
     case OFPACT_OUTPUT:
         return ofputil_check_output_port(ofpact_get_OUTPUT(a)->port,
@@ -1263,10 +1277,14 @@ ofpact_check__(const struct ofpact *a, struct flow *flow, ofp_port_t max_ports,
     case OFPACT_POP_QUEUE:
     case OFPACT_FIN_TIMEOUT:
     case OFPACT_RESUBMIT:
+        fprintf(stderr, "ofpact_check__ OFPACT_RESUBMIT\n");
         return 0;
 
     case OFPACT_LEARN:
         return learn_check(ofpact_get_LEARN(a), flow);
+
+    case OFPACT_TIMEOUT_ACT:
+        return timeout_act_check(ofpact_get_TIMEOUT_ACT(a), flow);
 
     case OFPACT_MULTIPATH:
         return multipath_check(ofpact_get_MULTIPATH(a), flow);
@@ -1322,7 +1340,10 @@ ofpacts_check(const struct ofpact ofpacts[], size_t ofpacts_len,
     ovs_be16 dl_type = flow->dl_type;
     enum ofperr error = 0;
 
+    fprintf(stderr, "ofpacts_check called ofpacts_len=%u\n", ofpacts_len);
+
     OFPACT_FOR_EACH (a, ofpacts, ofpacts_len) {
+        fprintf(stderr, "ofpact: %p ofpacts: %p  a->len=%u \n", a, ofpacts, a->len);
         error = ofpact_check__(a, flow, max_ports, table_id);
         if (error) {
             break;
@@ -1339,6 +1360,8 @@ ofpacts_verify(const struct ofpact ofpacts[], size_t ofpacts_len)
 {
     const struct ofpact *a;
     enum ovs_instruction_type inst;
+
+    fprintf(stderr, "ofpacts_verify ofpacts=%p ofpacts_len=%u\n", ofpacts, ofpacts_len);
 
     inst = OVSINST_OFPIT11_APPLY_ACTIONS;
     OFPACT_FOR_EACH (a, ofpacts, ofpacts_len) {
@@ -1503,7 +1526,7 @@ ofpact_sample_to_nxast(const struct ofpact_sample *os,
 static void
 ofpact_to_nxast(const struct ofpact *a, struct ofpbuf *out)
 {
-    fprintf(stderr, "thoff: ofpact_to_nxast called\n");
+    fprintf(stderr, "thoff: ofpact_to_nxast called a->len=%u\n", a->len);
     switch (a->type) {
     case OFPACT_CONTROLLER:
         ofpact_controller_to_nxast(ofpact_get_CONTROLLER(a), out);
@@ -1573,6 +1596,11 @@ ofpact_to_nxast(const struct ofpact *a, struct ofpbuf *out)
 
     case OFPACT_LEARN:
         learn_to_nxast(ofpact_get_LEARN(a), out);
+        break;
+
+    case OFPACT_TIMEOUT_ACT:
+        // TODO - CHECK
+        timeout_act_to_nxast(ofpact_get_TIMEOUT_ACT(a), out);
         break;
 
     case OFPACT_MULTIPATH:
@@ -1730,6 +1758,7 @@ ofpact_to_openflow10(const struct ofpact *a, struct ofpbuf *out)
     case OFPACT_FIN_TIMEOUT:
     case OFPACT_RESUBMIT:
     case OFPACT_LEARN:
+    case OFPACT_TIMEOUT_ACT:
     case OFPACT_MULTIPATH:
     case OFPACT_NOTE:
     case OFPACT_EXIT:
@@ -1897,6 +1926,7 @@ ofpact_to_openflow11(const struct ofpact *a, struct ofpbuf *out)
     case OFPACT_FIN_TIMEOUT:
     case OFPACT_RESUBMIT:
     case OFPACT_LEARN:
+    case OFPACT_TIMEOUT_ACT:
     case OFPACT_MULTIPATH:
     case OFPACT_NOTE:
     case OFPACT_EXIT:
@@ -2045,6 +2075,7 @@ ofpact_outputs_to_port(const struct ofpact *ofpact, ofp_port_t port)
     case OFPACT_FIN_TIMEOUT:
     case OFPACT_RESUBMIT:
     case OFPACT_LEARN:
+    case OFPACT_TIMEOUT_ACT:
     case OFPACT_MULTIPATH:
     case OFPACT_NOTE:
     case OFPACT_EXIT:
@@ -2159,7 +2190,7 @@ print_fin_timeout(const struct ofpact_fin_timeout *fin_timeout,
     ds_put_char(s, ')');
 }
 
-static void
+void
 ofpact_format(const struct ofpact *a, struct ds *s)
 {
     const struct ofpact_enqueue *enqueue;
@@ -2170,8 +2201,10 @@ ofpact_format(const struct ofpact *a, struct ds *s)
     const struct ofpact_sample *sample;
     ofp_port_t port;
 
+    fprintf(stderr, "ofpact_format a=%p a->type=%u\n", a, a->type);
     switch (a->type) {
     case OFPACT_OUTPUT:
+        fprintf(stderr, "ofpact_format OFPACT_OUTPUT\n");
         port = ofpact_get_OUTPUT(a)->port;
         if (ofp_to_u16(port) < ofp_to_u16(OFPP_MAX)) {
             ds_put_format(s, "output:%"PRIu16, port);
@@ -2347,7 +2380,12 @@ ofpact_format(const struct ofpact *a, struct ds *s)
         break;
 
     case OFPACT_LEARN:
+        fprintf(stderr, "ofpact_format calling learn_format\n");
         learn_format(ofpact_get_LEARN(a), s);
+        break;
+
+    case OFPACT_TIMEOUT_ACT:
+        timeout_act_format(ofpact_get_TIMEOUT_ACT(a), s);
         break;
 
     case OFPACT_MULTIPATH:

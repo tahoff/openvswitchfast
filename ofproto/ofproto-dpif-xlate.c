@@ -2115,6 +2115,15 @@ xlate_learn_action(struct xlate_ctx *ctx,
 }
 
 static void
+xlate_timeout_act_action(struct xlate_ctx *ctx,
+                         const struct ofpact_timeout_act *act) {
+   // do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
+   //                 struct xlate_ctx *ctx)
+   fprintf(stderr, "xxxxxxxxxxxxxxxxxxxxxxxx\n"); 
+   do_xlate_actions(act->ofpacts, act->ofpacts_len, ctx);
+}
+
+static void
 xlate_fin_timeout(struct xlate_ctx *ctx,
                   const struct ofpact_fin_timeout *oft)
 {
@@ -2350,6 +2359,11 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
 
         case OFPACT_LEARN:
             xlate_learn_action(ctx, ofpact_get_LEARN(a));
+            break;
+ 
+        case OFPACT_TIMEOUT_ACT:
+            /* Don't execute a timeout_act, until the rule expires */
+            xlate_timeout_act_action(ctx, ofpact_get_TIMEOUT_ACT(a));
             break;
 
         case OFPACT_EXIT:

@@ -36,6 +36,10 @@ char *parse_ofp_str(struct ofputil_flow_mod *, int command, const char *str_,
                     enum ofputil_protocol *usable_protocols)
     WARN_UNUSED_RESULT;
 
+char * str_to_inst_ofpacts(char *, struct ofpbuf *,
+                           enum ofputil_protocol *)
+    WARN_UNUSED_RESULT;
+
 char *parse_ofp_flow_mod_str(struct ofputil_flow_mod *, const char *string,
                              uint16_t command,
                              enum ofputil_protocol *usable_protocols)

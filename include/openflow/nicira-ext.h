@@ -299,6 +299,7 @@ enum nx_action_subtype {
     NXAST_RESUBMIT_TABLE,       /* struct nx_action_resubmit */
     NXAST_OUTPUT_REG,           /* struct nx_action_output_reg */
     NXAST_LEARN,                /* struct nx_action_learn */
+    NXAST_TIMEOUT_ACT,
     NXAST_EXIT,                 /* struct nx_action_header */
     NXAST_DEC_TTL,              /* struct nx_action_header */
     NXAST_FIN_TIMEOUT,          /* struct nx_action_fin_timeout */
@@ -941,6 +942,17 @@ OFP_ASSERT(sizeof(struct nx_action_learn) == 32);
 #define NX_LEARN_DST_OUTPUT    (2 << 11) /* Add OFPAT_OUTPUT action. */
 #define NX_LEARN_DST_RESERVED  (3 << 11) /* Not yet defined. */
 #define NX_LEARN_DST_MASK      (3 << 11)
+
+struct nx_action_timeout_act {
+    ovs_be16 type;
+    ovs_be16 len;
+    ovs_be32 vendor;
+    ovs_be16 subtype;
+    ovs_be16 ofpacts_len;
+    uint8_t pad[4];
+     /* Followed by a sequence of ofpact data */
+};
+OFP_ASSERT(sizeof(struct nx_action_timeout_act) == 16);
 
 /* Action structure for NXAST_FIN_TIMEOUT.
  *

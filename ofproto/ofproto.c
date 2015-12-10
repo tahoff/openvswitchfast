@@ -2445,11 +2445,11 @@ rule_actions_create(const struct ofpact *ofpacts, size_t ofpacts_len)
 {
     struct rule_actions *actions;
 
-    fprintf(stderr, "thoff: # rule_actions_create #  called\n");
+    fprintf(stderr, "thoff: # rule_actions_create # ofpacts_len=%u\n", ofpacts_len);
     actions = xmalloc(sizeof *actions);
     atomic_init(&actions->ref_count, 1);
     actions->ofpacts = xmemdup(ofpacts, ofpacts_len);
-    actions->ofpacts_len = ofpacts_len;
+    actions->ofpacts_len = ofpacts_len, ofpacts_len;
     actions->meter_id = ofpacts_get_meter(ofpacts, ofpacts_len);
     return actions;
 }
@@ -3903,6 +3903,8 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
     uint8_t table_id;
     int error;
 
+    fprintf(stderr, "ofproto/ofproto.c add_flow called\n");
+
     error = check_table_id(ofproto, fm->table_id);
     if (error) {
         return error;
@@ -4020,7 +4022,6 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
     rule->send_flow_removed = (fm->flags & OFPUTIL_FF_SEND_FLOW_REM) != 0;
     
     // Populate the active and timeout actions.
-    fprintf(stderr, "thoff ----------- add_flow() about to create actions\n"); 
     //rule->timeout_actions = rule_actions_create_timeout(fm->ofpacts, fm->ofpacts_len);
     rule->actions = rule_actions_create(fm->ofpacts, fm->ofpacts_len);
     
@@ -4039,16 +4040,13 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
     }
 
     /* Insert rule. */
-    fprintf(stderr, "thoff ---- add_flow() calling oftable_insert_rule \n");
     oftable_insert_rule(rule);
-    fprintf(stderr, "thoff ---- add_flow() oftable_insert_rule returned \n");
 
     group = ofopgroup_create(ofproto, ofconn, request, fm->buffer_id);
     ofoperation_create(group, rule, OFOPERATION_ADD, 0);
     ofproto->ofproto_class->rule_insert(rule);
     ofopgroup_submit(group);
 
-    fprintf(stderr, "thoff ---- add_flow() returinging \n");
     return error;
 }
 
@@ -4350,46 +4348,108 @@ ofproto_rule_expire(struct rule *rule, uint8_t reason)
 {
     struct ofproto *ofproto = rule->ofproto;
     struct ofpact *a;
-    struct ofputil_flow_mod fm;
-    struct ofpact_learn *learn;
     struct flow flow;
     
     struct ofpbuf ofpacts_buf;
     uint64_t ofpacts_stub[1024 / 8];
+    struct ofputil_flow_mod fm;
 
     ovs_assert(reason == OFPRR_HARD_TIMEOUT || reason == OFPRR_IDLE_TIMEOUT
                || reason == OFPRR_DELETE);
 
-    fprintf(stderr, "ofproto_rule_expire called\n");
-    // For a non-null, non-empty, set of timeout_actions, execute the actions.
+    // Execute only the timeout_act action (which contains other actions)
     if (rule->actions && rule->actions->ofpacts_len > 0) {
-        //OFPACT_FOR_EACH (a, rule->timeout_actions->ofpacts, rule->timeout_actions->ofpacts_len) {
-        int i;
-        for (i = 0; i < rule->actions->ofpacts_len; i++) {
+        
+        OFPACT_FOR_EACH (a, rule->actions->ofpacts, rule->actions->ofpacts_len) {
+            ovs_mutex_unlock(&ofproto_mutex);
+            if (a->type == OFPACT_TIMEOUT_ACT) {
+                //struct ofpact_timeout_act *timeout_act;
+                //timeout_act = ofpact_get_TIMEOUT_ACT(a);
+                timeout_act_execute(ofpact_get_TIMEOUT_ACT(a), &flow, rule);
+            } else if (a->type == OFPACT_LEARN) {
+                ofpbuf_use_stub(&ofpacts_buf, ofpacts_stub, sizeof ofpacts_stub);
+                timeout_learn_execute(ofpact_get_LEARN(a), &fm, &ofpacts_buf);
+                ofpbuf_uninit(&ofpacts_buf);
+                ofproto_flow_mod(ofproto, &fm);          
+            }
+            ovs_mutex_trylock(&ofproto_mutex);
+            break;
+        }
+
+        /*for (i = 0; i < rule->actions->ofpacts_len; i++) {
             a = &rule->actions->ofpacts[i]; 
+            if (a->type == OFPACT_TIMEOUT_ACT) {
+                struct ofpact_timeout_act *timeout_act;
+                timeout_act = ofpact_get_TIMEOUT_ACT(a);
+                timeout_act_execute(timeout_act, &flow, rule);
+            }
+        } */
+    }
+
+    ofproto_rule_delete__(ofproto, rule, reason);
+}
+
+/* 
+* Actions taken cannot assume that there's a packet, because there isn't one.
+*/
+void timeout_act_execute(const struct ofpact_timeout_act *act,
+                         struct flow *flow, struct rule *rule)
+{
+    struct ofproto *ofproto;
+    struct ofpact_learn *learn;
+    struct ofpact *a;
+    struct ofputil_flow_mod fm;
+    struct flow_wildcards wc;
+    wc.masks = *flow;
+
+    ofproto = rule->ofproto;
+
+    struct ofpbuf ofpacts_buf;
+    uint64_t ofpacts_stub[1024 / 8];
+    ofpbuf_use_stub(&ofpacts_buf, ofpacts_stub, sizeof ofpacts_stub);
+
+    fprintf(stderr," timeout_act_execute: act->ofpacts=%p act->ofpacts_len=%u\n",
+            act->ofpacts, act->ofpacts_len);
+
+    if (act->ofpacts && act->ofpacts_len > 0) {
+        //for (i = 0; i < act->ofpacts_len; i++) {}
+        OFPACT_FOR_EACH (a, act->ofpacts, act->ofpacts_len) {  
+            //a = &act->ofpacts[i];
             switch (a->type) {
                 case OFPACT_LEARN:
+                    // ofpbuf_use_stub(&ofpacts_buf, ofpacts_stub, sizeof ofpacts_stub);
+                    // timeout_learn_execute(ofpact_get_LEARN(a), &fm, &ofpacts_buf);
+                    // ofpbuf_uninit(&ofpacts_buf);
+                    // ofproto_flow_mod(ofproto, &fm);
                     ofpbuf_use_stub(&ofpacts_buf, ofpacts_stub, sizeof ofpacts_stub);
-                    
+
                     // Create flow_mod
-                    learn = ofpact_get_LEARN(a); 
-                  
+                    learn = ofpact_get_LEARN(a);
+
                     if (!learn->learn_on_timeout) {
-                        continue;                    
+                        continue;
                     }
 
+                    //learn_mask(learn, &wc);
+                    
                     // Populate fm with the learn attributes
-                    // TODO - 3rd arguemnt is ofpact*, but function takes in ofpbuf
-                    ovs_mutex_unlock(&ofproto_mutex);
+                    // TODO - 3rd arguement is ofpact*, but function takes in ofpbuf
+                    //ovs_mutex_unlock(&ofproto_mutex);
                     timeout_learn_execute(learn, &fm, &ofpacts_buf);
+                    //learn_execute(learn, flow, &fm, &ofpacts_buf);
+                    
                     // ofproto_flow_mod(struct ofproto *ofproto, struct ofputil_flow_mod *fm)
                     ofproto_flow_mod(ofproto, &fm);
-                    ovs_mutex_trylock(&ofproto_mutex);
+                    ofpbuf_uninit(&ofpacts_buf);
+                    //ovs_mutex_trylock(&ofproto_mutex);
+                    break;
+                case OFPACT_TIMEOUT_ACT:
+                    //timeout_act_execute(ofpact_get_TIMEOUT_ACT(a), flow, rule);
                     break;
                 case OFPACT_REG_LOAD:
-                    nxm_execute_reg_load(ofpact_get_REG_LOAD(a), &flow);
+                    nxm_execute_reg_load(ofpact_get_REG_LOAD(a), flow);
                     break;
-                // Do nothing in the default case, because it isn't supported.
+                    // Do nothing in the default case, because it isn't supported.
                 case OFPACT_CONTROLLER:
                 case OFPACT_OUTPUT:
                 case OFPACT_ENQUEUE:
@@ -4407,7 +4467,8 @@ ofproto_rule_expire(struct rule *rule, uint8_t reason)
                 case OFPACT_SET_L4_SRC_PORT:
                 case OFPACT_SET_L4_DST_PORT:
                 case OFPACT_REG_MOVE:
-                
+
+
                 case OFPACT_STACK_PUSH:
                 case OFPACT_STACK_POP:
                 case OFPACT_DEC_TTL:
@@ -4433,8 +4494,10 @@ ofproto_rule_expire(struct rule *rule, uint8_t reason)
         }
     }
 
-    ofproto_rule_delete__(ofproto, rule, reason);
 }
+
+
+
 
 /* Reduces '*timeout' to no more than 'max'.  A value of zero in either case
  * means "infinite". */
@@ -4483,6 +4546,8 @@ handle_flow_mod(struct ofconn *ofconn, const struct ofp_header *oh)
     enum ofperr error;
     long long int now;
 
+    fprintf(stderr, "handle_flow_mod called\n");
+
     error = reject_slave_controller(ofconn);
     if (error) {
         goto exit;
@@ -4492,6 +4557,13 @@ handle_flow_mod(struct ofconn *ofconn, const struct ofp_header *oh)
     error = ofputil_decode_flow_mod(&fm, oh, ofconn_get_protocol(ofconn),
                                     &ofpacts);
     if (!error) {
+        int i;
+        fprintf(stderr, "... handle_flow_mod ... \n");
+        for (i = 0; i < fm.ofpacts_len; i++) {
+            fprintf(stderr, "%d ", *(((char *) fm.ofpacts) + i));
+        }
+        fprintf(stderr, "...... \n");
+
         error = handle_flow_mod__(ofproto, ofconn, &fm, oh);
     }
     if (error) {
