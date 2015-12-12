@@ -248,101 +248,10 @@ void timeout_act_format(const struct ofpact_timeout_act *act, struct ds *s)
         fprintf(stderr, "timeout_act_format LOOP %p\n", a);
         ofpact_format(a, s);
         ds_put_char(s, ',');
-        break;
     }
 
     ds_put_char(s, ')');
 }
-
-/* 
-* Actions taken cannot assume that there's a packet, because there isn't one.
-*/
-/*void timeout_act_execute(const struct ofpact_timeout_act *act,
-                         struct flow *flow, struct rule *rule)
-{
-    struct ofproto *ofproto;
-    struct ofpact_learn *learn;
-    struct ofpact *a;
-    struct ofputil_flow_mod fm;
-    ofproto = rule->ofproto;
- 
-    struct ofpbuf ofpacts_buf;
-    uint64_t ofpacts_stub[1024 / 8];
-
-    if (act->ofpacts && act->ofpacts_len > 0) {
-        int i;
-        for (i = 0; i < act->ofpacts_len; i++) {
-            a = &act->ofpacts[i];
-            switch (a->type) {
-                case OFPACT_LEARN:
-                    ofpbuf_use_stub(&ofpacts_buf, ofpacts_stub, sizeof ofpacts_stub);
-
-                    // Create flow_mod
-                    learn = ofpact_get_LEARN(a);
-
-                    if (!learn->learn_on_timeout) {
-                        continue;
-                    }
-
-                    // Populate fm with the learn attributes
-                    // TODO - 3rd arguement is ofpact*, but function takes in ofpbuf
-                    //ovs_mutex_unlock(&ofproto_mutex);
-                    timeout_learn_execute(learn, &fm, &ofpacts_buf);
-                    // ofproto_flow_mod(struct ofproto *ofproto, struct ofputil_flow_mod *fm)
-                    ofproto_flow_mod(ofproto, &fm);
-                    //ovs_mutex_trylock(&ofproto_mutex);
-                    break;
-                case OFPACT_TIMEOUT_ACT:
-                    timeout_act_execute(ofpact_get_TIMEOUT_ACT(a), flow, rule);
-                    break;
-                case OFPACT_REG_LOAD:
-                    nxm_execute_reg_load(ofpact_get_REG_LOAD(a), flow);
-                    break;
-                    // Do nothing in the default case, because it isn't supported.
-                case OFPACT_CONTROLLER:
-                case OFPACT_OUTPUT:
-                case OFPACT_ENQUEUE:
-                case OFPACT_OUTPUT_REG:
-                case OFPACT_BUNDLE:
-                case OFPACT_SET_VLAN_VID:
-                case OFPACT_SET_VLAN_PCP:
-                case OFPACT_STRIP_VLAN:
-                case OFPACT_PUSH_VLAN:
-                case OFPACT_SET_ETH_SRC:
-                case OFPACT_SET_ETH_DST:
-                case OFPACT_SET_IPV4_SRC:
-                case OFPACT_SET_IPV4_DST:
-                case OFPACT_SET_IPV4_DSCP:
-                case OFPACT_SET_L4_SRC_PORT:
-                case OFPACT_SET_L4_DST_PORT:
-                case OFPACT_REG_MOVE:
-
-                case OFPACT_STACK_PUSH:
-                case OFPACT_STACK_POP:
-                case OFPACT_DEC_TTL:
-                case OFPACT_SET_MPLS_TTL:
-                case OFPACT_DEC_MPLS_TTL:
-                case OFPACT_PUSH_MPLS:
-                case OFPACT_POP_MPLS:
-                case OFPACT_SET_TUNNEL:
-                case OFPACT_SET_QUEUE:
-                case OFPACT_POP_QUEUE:
-                case OFPACT_FIN_TIMEOUT:
-                case OFPACT_RESUBMIT:
-                case OFPACT_MULTIPATH:
-                case OFPACT_NOTE:
-                case OFPACT_EXIT:
-                case OFPACT_SAMPLE:
-                case OFPACT_METER:
-                case OFPACT_CLEAR_ACTIONS:
-                case OFPACT_WRITE_METADATA:
-                case OFPACT_GOTO_TABLE:
-                    break;
-            }
-        }
-    }
-}
-*/
 
 static char * WARN_UNUSED_RESULT
 timeout_act_parse__(char *orig, char *arg, struct ofpbuf *ofpacts) {

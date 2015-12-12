@@ -21,6 +21,7 @@
 #include "compiler.h"
 #include "dynamic-string.h"
 #include "learn.h"
+#include "learn_learn.h"
 #include "learn_delete.h"
 #include "meta-flow.h"
 #include "multipath.h"
@@ -407,6 +408,11 @@ ofpact_from_nxast(const union ofp_action *a, enum ofputil_action_code code,
     case OFPUTIL_NXAST_LEARN:
         error = learn_from_openflow(
             ALIGNED_CAST(const struct nx_action_learn *, a), out);
+        break;
+
+    case OFPUTIL_NXAST_LEARN_LEARN:
+        error = learn_learn_from_openflow(
+            ALIGNED_CAST(const struct nx_action_learn_learn *, a), out);
         break;
 
     case OFPUTIL_NXAST_LEARN_DELETE:
@@ -993,6 +999,7 @@ ovs_instruction_type_from_ofpact_type(enum ofpact_type type)
     case OFPACT_FIN_TIMEOUT:
     case OFPACT_RESUBMIT:
     case OFPACT_LEARN:
+    case OFPACT_LEARN_LEARN:
     case OFPACT_LEARN_DELETE:
     case OFPACT_TIMEOUT_ACT:
     case OFPACT_MULTIPATH:
@@ -1284,11 +1291,13 @@ ofpact_check__(const struct ofpact *a, struct flow *flow, ofp_port_t max_ports,
     case OFPACT_POP_QUEUE:
     case OFPACT_FIN_TIMEOUT:
     case OFPACT_RESUBMIT:
-        fprintf(stderr, "ofpact_check__ OFPACT_RESUBMIT\n");
         return 0;
 
     case OFPACT_LEARN:
         return learn_check(ofpact_get_LEARN(a), flow);
+
+    case OFPACT_LEARN_LEARN:
+       return learn_learn_check(ofpact_get_LEARN_LEARN(a), flow);
 
     case OFPACT_LEARN_DELETE:
         return learn_delete_check(ofpact_get_LEARN_DELETE(a), flow);
@@ -1608,6 +1617,11 @@ ofpact_to_nxast(const struct ofpact *a, struct ofpbuf *out)
         learn_to_nxast(ofpact_get_LEARN(a), out);
         break;
 
+    case OFPACT_LEARN_LEARN:
+        fprintf(stderr, "calling learn_learn_to_nxast\n");
+        learn_learn_to_nxast(ofpact_get_LEARN_LEARN(a), out);
+        break;
+
     case OFPACT_LEARN_DELETE:
         learn_delete_to_nxast(ofpact_get_LEARN_DELETE(a), out);
         break;
@@ -1772,6 +1786,7 @@ ofpact_to_openflow10(const struct ofpact *a, struct ofpbuf *out)
     case OFPACT_FIN_TIMEOUT:
     case OFPACT_RESUBMIT:
     case OFPACT_LEARN:
+    case OFPACT_LEARN_LEARN:
     case OFPACT_LEARN_DELETE:
     case OFPACT_TIMEOUT_ACT:
     case OFPACT_MULTIPATH:
@@ -1941,6 +1956,7 @@ ofpact_to_openflow11(const struct ofpact *a, struct ofpbuf *out)
     case OFPACT_FIN_TIMEOUT:
     case OFPACT_RESUBMIT:
     case OFPACT_LEARN:
+    case OFPACT_LEARN_LEARN:
     case OFPACT_LEARN_DELETE:
     case OFPACT_TIMEOUT_ACT:
     case OFPACT_MULTIPATH:
@@ -2091,6 +2107,7 @@ ofpact_outputs_to_port(const struct ofpact *ofpact, ofp_port_t port)
     case OFPACT_FIN_TIMEOUT:
     case OFPACT_RESUBMIT:
     case OFPACT_LEARN:
+    case OFPACT_LEARN_LEARN:
     case OFPACT_LEARN_DELETE:
     case OFPACT_TIMEOUT_ACT:
     case OFPACT_MULTIPATH:
@@ -2399,6 +2416,10 @@ ofpact_format(const struct ofpact *a, struct ds *s)
     case OFPACT_LEARN:
         fprintf(stderr, "ofpact_format calling learn_format\n");
         learn_format(ofpact_get_LEARN(a), s);
+        break;
+
+    case OFPACT_LEARN_LEARN:
+        learn_learn_format(ofpact_get_LEARN_LEARN(a), s);
         break;
 
     case OFPACT_LEARN_DELETE:

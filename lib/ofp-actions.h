@@ -87,6 +87,7 @@
     /* Flow table interaction. */                                   \
     DEFINE_OFPACT(RESUBMIT,        ofpact_resubmit,      ofpact)    \
     DEFINE_OFPACT(LEARN,           ofpact_learn,         specs)     \
+    DEFINE_OFPACT(LEARN_LEARN,     ofpact_learn_learn,   data)      \
     DEFINE_OFPACT(TIMEOUT_ACT,     ofpact_timeout_act,   ofpacts)   \
     DEFINE_OFPACT(LEARN_DELETE,    ofpact_learn_delete,  specs)     \
                                                                     \
@@ -424,6 +425,28 @@ struct ofpact_learn {
 
     unsigned int n_specs;
     struct ofpact_learn_spec specs[];
+};
+
+/* OFPACT_LEARN_LEARN.
+ *
+ * Used for NXAST_LEARN_LEARN. */
+struct ofpact_learn_learn {
+    struct ofpact ofpact;
+
+    uint16_t idle_timeout;      /* Idle time before discarding (seconds). */
+    uint16_t hard_timeout;      /* Max time before discarding (seconds). */
+    uint16_t priority;          /* Priority level of flow entry. */
+    uint64_t cookie;            /* Cookie for new flow. */
+    enum ofputil_flow_mod_flags flags;
+    uint8_t table_id;           /* Table to insert flow entry. */
+    uint16_t fin_idle_timeout;  /* Idle timeout after FIN, if nonzero. */
+    uint16_t fin_hard_timeout;  /* Hard timeout after FIN, if nonzero. */
+    uint8_t learn_on_timeout;
+
+    uint32_t n_specs;
+    uint32_t ofpacts_len;
+
+    uint8_t data[];  // Contains the specs data, follows by actions
 };
 
 /* OFPACT_LEARN_DELETE.

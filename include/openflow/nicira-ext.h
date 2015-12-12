@@ -299,6 +299,7 @@ enum nx_action_subtype {
     NXAST_RESUBMIT_TABLE,       /* struct nx_action_resubmit */
     NXAST_OUTPUT_REG,           /* struct nx_action_output_reg */
     NXAST_LEARN,                /* struct nx_action_learn */
+    NXAST_LEARN_LEARN,          /* struct nx_action_learn_learn */
     NXAST_LEARN_DELETE,         /* struct nx_action_learn_delete */
     NXAST_TIMEOUT_ACT,
     NXAST_EXIT,                 /* struct nx_action_header */
@@ -931,6 +932,28 @@ struct nx_action_learn {
      * until the end of the action is reached. */
 };
 OFP_ASSERT(sizeof(struct nx_action_learn) == 32);
+
+struct nx_action_learn_learn {
+    ovs_be16 type;              /* OFPAT_VENDOR. */
+    ovs_be16 len;               /* At least 24. */
+    ovs_be32 vendor;            /* NX_VENDOR_ID. */
+    ovs_be16 subtype;           /* NXAST_LEARN_LEARN. */
+    ovs_be16 idle_timeout;      /* Idle time before discarding (seconds). */
+    ovs_be16 hard_timeout;      /* Max time before discarding (seconds). */
+    ovs_be16 priority;          /* Priority level of flow entry. */
+    ovs_be64 cookie;            /* Cookie for new flow. */
+    ovs_be16 flags;             /* Either 0 or OFPFF_SEND_FLOW_REM. */
+    uint8_t table_id;           /* Table to insert flow entry. */
+    uint8_t learn_on_timeout;  
+    ovs_be16 fin_idle_timeout;  /* Idle timeout after FIN, if nonzero. */
+    ovs_be16 fin_hard_timeout;  /* Hard timeout after FIN, if nonzero. */
+    ovs_be32 n_specs;
+    ovs_be32 ofpacts_len;
+    /* Followed by a sequence of flow_mod_spec elements, 
+     * then followed by action data */
+};
+OFP_ASSERT(sizeof(struct nx_action_learn_learn) == 40);
+
 
 struct nx_action_learn_delete {
     ovs_be16 type;              /* OFPAT_VENDOR. */

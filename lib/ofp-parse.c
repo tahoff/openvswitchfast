@@ -780,6 +780,10 @@ parse_named_action(enum ofputil_action_code code,
         error = learn_parse(arg, ofpacts);
         break;
 
+    case OFPUTIL_NXAST_LEARN_LEARN:
+        error = learn_learn_parse(arg, ofpacts);
+        break;
+
     case OFPUTIL_NXAST_LEARN_DELETE:
         error = learn_delete_parse(arg, ofpacts);
         break;

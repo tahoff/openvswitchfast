@@ -82,6 +82,8 @@ lib_libopenvswitch_a_SOURCES = \
 	lib/learn.h \
 	lib/learn_delete.c \
 	lib/learn_delete.h \
+	lib/learn_learn.c \
+	lib/learn_learn.h \
 	lib/learning-switch.c \
 	lib/learning-switch.h \
 	lib/list.c \
