@@ -41,6 +41,28 @@ get_be16(const void **pp)
     return value;
 }
 
+static char *
+get_last_char(char *c, char *str) {
+    char *last_instance;
+    char *instance;
+    instance = strstr(str, c);
+    last_instance = instance;
+
+    fprintf(stderr, "get_last_char %p %s %s\n", last_instance, c, str);
+
+    if (!last_instance) {
+        fprintf(stderr, "early null\n");
+        return NULL;
+    } else {
+        while ((instance = strstr(instance, c)) == NULL) {
+            fprintf(stderr, "%p\n", last_instance);
+            last_instance = instance;
+        }
+
+        return last_instance;
+    }
+}
+
 static ovs_be32
 get_be32(const void **pp)
 {
@@ -775,6 +797,33 @@ learn_learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
     char *name, *value;
     char *ptr;
     char *error;
+    char *act_str;
+    char *end_act_str;
+
+    act_str = strstr(orig, "actions");
+    if (act_str) {
+        char bracket[2];
+        bracket[0] = '}';
+        bracket[1] = '\0';
+
+        act_str = strchr(act_str + 1, '=');
+        if (!act_str) {
+            return xstrdup("Must specify action");
+        }
+
+        act_str = strchr(act_str, '{');
+        if (!act_str) {
+            return xstrdup("learn_learn requires actions to be bound by '{...}'");
+        }
+        act_str = act_str + 1;
+
+        // get_last_char(char *c, char *str)
+        end_act_str = get_last_char(bracket, act_str);
+        if (!end_act_str) {
+            return xstrdup("learn_learn requires actions to be bound by '{...}' 2}");
+        }
+        end_act_str = end_act_str - 1;
+    }
 
     struct ofpbuf learn_ofpacts_buf;
     ofpbuf_init(&learn_ofpacts_buf, 32);
@@ -814,13 +863,19 @@ learn_learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
             learn->learn_on_timeout = atoi(value);
         } else if (!strcmp(name, "actions")) {
            // TODO check
-           fprintf(stderr, "learn_learn_parse__ actions\n");
+           fprintf(stderr, "learn_learn_parse__ actions %s\n", value);
            enum ofputil_protocol usable_protocols;
            usable_protocols = OFPUTIL_P_OF10_STD_TID;
 
            size_t len = ofpacts->size;
 
-           error = str_to_inst_ofpacts(value, &learn_ofpacts_buf, &usable_protocols);
+           char all_actions[end_act_str - act_str + 1];
+           memcpy(all_actions, act_str, end_act_str - act_str);
+           all_actions[end_act_str - act_str] = '\0';
+
+           fprintf(stderr, "learn_learn_parse__ actions=%s\n", all_actions);
+
+           error = str_to_inst_ofpacts(all_actions, &learn_ofpacts_buf, &usable_protocols);
            if (error) {
                ofpbuf_uninit(&learn_ofpacts_buf);
                return error;
@@ -832,6 +887,8 @@ learn_learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
            learn->ofpacts_len += ofpacts->size - len;
            memcpy(actions, learn_ofpacts_buf.data, learn_ofpacts_buf.size);
            //ofpact_update_len(ofpacts, &learn->ofpact);
+
+           break;
 
            fprintf(stderr, "learn_learn_parse__ learn->ofpacts_len=%u\n",
                    learn->ofpacts_len);
@@ -874,6 +931,10 @@ learn_learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
     //    memcpy(ptr, learn_ofpacts, len);
     //}
     //free(learn_ofpacts);
+
+    // Do the action parsing afterwards
+
+
 
     //learn = ofpacts->l2;
     ofpact_update_len(ofpacts, &learn->ofpact);
