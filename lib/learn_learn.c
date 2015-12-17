@@ -129,6 +129,7 @@ learn_learn_from_openflow(const struct nx_action_learn_learn *nal,
     learn->fin_idle_timeout = ntohs(nal->fin_idle_timeout);
     learn->fin_hard_timeout = ntohs(nal->fin_hard_timeout);
     learn->learn_on_timeout = nal->learn_on_timeout;
+    learn->use_atomic_cookie = nal->use_atomic_cookie;
 
     /* We only support "send-flow-removed" for now. */
     switch (ntohs(nal->flags)) {
@@ -424,6 +425,7 @@ learn_learn_to_nxast(const struct ofpact_learn_learn *learn,
     nal->flags = htons(learn->flags);
     nal->table_id = learn->table_id;
     nal->learn_on_timeout = learn->learn_on_timeout;
+    nal->use_atomic_cookie = learn->use_atomic_cookie;
 
     spec = (const struct ofpact_learn_spec *) learn->data;
     end = &spec[learn->n_specs];
@@ -508,7 +510,8 @@ learn_learn_to_nxast(const struct ofpact_learn_learn *learn,
 void
 learn_learn_execute(const struct ofpact_learn_learn *learn,
                     const struct flow *flow, struct ofputil_flow_mod *fm,
-                    struct ofpbuf *ofpacts)
+                    struct ofpbuf *ofpacts,
+                    uint64_t cookie_count)
 {
     //if (learn->learn_on_timeout) {
     //    return;
@@ -525,7 +528,13 @@ learn_learn_execute(const struct ofpact_learn_learn *learn,
     fm->priority = learn->priority;
     fm->cookie = htonll(0);
     fm->cookie_mask = htonll(0);
-    fm->new_cookie = htonll(learn->cookie);
+
+    if (learn->use_atomic_cookie) {
+        fm->new_cookie = htonll(cookie_count);
+    } else {
+        fm->new_cookie = htonll(learn->cookie);
+    }
+    
     fm->modify_cookie = fm->new_cookie != htonll(UINT64_MAX);
     fm->table_id = learn->table_id;
     fm->command = OFPFC_MODIFY_STRICT;
@@ -861,6 +870,8 @@ learn_learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
             learn->cookie = strtoull(value, NULL, 0);
         } else if (!strcmp(name, "learn_on_timeout")) {
             learn->learn_on_timeout = atoi(value);
+        } else if (!strcmp(name, "use_atomic_cookie")) {
+            learn->use_atomic_cookie = atoi(value);
         } else if (!strcmp(name, "actions")) {
            // TODO check
            fprintf(stderr, "learn_learn_parse__ actions %s\n", value);
@@ -1018,6 +1029,8 @@ learn_learn_format(const struct ofpact_learn_learn *learn, struct ds *s)
     }
 
     ds_put_format(s, ",learn_on_timeout=%"PRIu8, learn->learn_on_timeout);
+    ds_put_format(s, ",use_atomic_cookie=%"PRIu8, learn->use_atomic_cookie);
+    
     spec = (const struct ofpact_learn_spec *) learn->data;
     spec_end = spec + learn->n_specs;
 

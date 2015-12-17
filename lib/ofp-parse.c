@@ -25,6 +25,7 @@
 #include "bundle.h"
 #include "byte-order.h"
 #include "dynamic-string.h"
+#include "increment_cookie.h"
 #include "learn.h"
 #include "learn_delete.h"
 #include "meta-flow.h"
@@ -786,6 +787,10 @@ parse_named_action(enum ofputil_action_code code,
 
     case OFPUTIL_NXAST_LEARN_DELETE:
         error = learn_delete_parse(arg, ofpacts);
+        break;
+
+    case OFPUTIL_NXAST_INCREMENT_COOKIE:
+        error = increment_cookie_parse(arg, ofpacts);
         break;
 
     case OFPUTIL_NXAST_TIMEOUT_ACT:

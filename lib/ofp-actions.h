@@ -90,6 +90,7 @@
     DEFINE_OFPACT(LEARN_LEARN,     ofpact_learn_learn,   data)      \
     DEFINE_OFPACT(TIMEOUT_ACT,     ofpact_timeout_act,   ofpacts)   \
     DEFINE_OFPACT(LEARN_DELETE,    ofpact_learn_delete,  specs)     \
+    DEFINE_OFPACT(INCREMENT_COOKIE,ofpact_increment_cookie,ofpact)  \
                                                                     \
     /* Arithmetic. */                                               \
     DEFINE_OFPACT(MULTIPATH,       ofpact_multipath,     ofpact)    \
@@ -442,6 +443,7 @@ struct ofpact_learn_learn {
     uint16_t fin_idle_timeout;  /* Idle timeout after FIN, if nonzero. */
     uint16_t fin_hard_timeout;  /* Hard timeout after FIN, if nonzero. */
     uint8_t learn_on_timeout;
+    uint8_t use_atomic_cookie;
 
     uint32_t n_specs;
     uint32_t ofpacts_len;
@@ -471,6 +473,13 @@ struct ofpact_timeout_act {
     struct ofpact ofpact;
     unsigned int ofpacts_len;
     struct ofpact *ofpacts;
+};
+
+/* OFPACT_INCREMENT_COOKIE
+ *
+ * Used for NXAST_INCREMENT_COOKIE. */
+struct ofpact_increment_cookie {
+    struct ofpact ofpact;
 };
 
 /* OFPACT_MULTIPATH.

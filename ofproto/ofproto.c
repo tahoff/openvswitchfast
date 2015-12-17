@@ -30,6 +30,7 @@
 #include "dynamic-string.h"
 #include "hash.h"
 #include "hmap.h"
+#include "increment_cookie.h"
 #include "learn.h"
 #include "learn_delete.h"
 #include "meta-flow.h"

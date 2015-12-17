@@ -28,6 +28,7 @@
 #include "coverage.h"
 #include "dpif.h"
 #include "dynamic-string.h"
+#include "increment_cookie.h"
 #include "in-band.h"
 #include "lacp.h"
 #include "learn.h"
@@ -2118,7 +2119,8 @@ xlate_learn_action(struct xlate_ctx *ctx,
 
 static void
 xlate_learn_learn_action(struct xlate_ctx *ctx,
-                         const struct ofpact_learn_learn *learn)
+                         const struct ofpact_learn_learn *learn,
+                         uint64_t cookie_count)
 {
     uint64_t ofpacts_stub[1024 / 8];
     struct ofputil_flow_mod fm;
@@ -2133,9 +2135,15 @@ xlate_learn_learn_action(struct xlate_ctx *ctx,
     }
 
     ofpbuf_use_stub(&ofpacts, ofpacts_stub, sizeof ofpacts_stub);
-    learn_learn_execute(learn, &ctx->xin->flow, &fm, &ofpacts);
+    learn_learn_execute(learn, &ctx->xin->flow, &fm, &ofpacts, cookie_count);
     ofproto_dpif_flow_mod(ctx->xbridge->ofproto, &fm);
     ofpbuf_uninit(&ofpacts);
+}
+
+static uint64_t
+xlate_increment_cookie_action(struct xlate_ctx *ctx,
+                              const struct ofpact_increment_cookie *incr_cookie) {
+    return increment_cookie_execute(incr_cookie, &ctx->xin->flow);
 }
 
 static void
@@ -2221,6 +2229,7 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
     struct flow_wildcards *wc = &ctx->xout->wc;
     struct flow *flow = &ctx->xin->flow;
     const struct ofpact *a;
+    uint64_t cookie_count;
 
     OFPACT_FOR_EACH (a, ofpacts, ofpacts_len) {
         struct ofpact_controller *controller;
@@ -2405,11 +2414,16 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
             break;
 
         case OFPACT_LEARN_LEARN:
-            xlate_learn_learn_action(ctx, ofpact_get_LEARN_LEARN(a));
+            xlate_learn_learn_action(ctx, ofpact_get_LEARN_LEARN(a), cookie_count);
             break;
  
         case OFPACT_LEARN_DELETE:
             xlate_learn_delete_action(ctx, ofpact_get_LEARN_DELETE(a));
+            break;
+        
+        case OFPACT_INCREMENT_COOKIE:
+            cookie_count =
+                xlate_increment_cookie_action(ctx, ofpact_get_INCREMENT_COOKIE(a));
             break;
  
         case OFPACT_TIMEOUT_ACT:

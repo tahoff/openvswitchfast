@@ -301,6 +301,7 @@ enum nx_action_subtype {
     NXAST_LEARN,                /* struct nx_action_learn */
     NXAST_LEARN_LEARN,          /* struct nx_action_learn_learn */
     NXAST_LEARN_DELETE,         /* struct nx_action_learn_delete */
+    NXAST_INCREMENT_COOKIE,     /* struct nx_action_increment_cookie */
     NXAST_TIMEOUT_ACT,
     NXAST_EXIT,                 /* struct nx_action_header */
     NXAST_DEC_TTL,              /* struct nx_action_header */
@@ -950,7 +951,8 @@ struct nx_action_learn_learn {
     ovs_be32 n_specs;
     ovs_be32 ofpacts_len;
     uint8_t rear_padding;       /* Number of bytes padded to rear */
-    uint8_t pad[7];
+    uint8_t use_atomic_cookie;
+    uint8_t pad[6];
     /* Followed by a sequence of flow_mod_spec elements, 
      * then followed by action data */
 };
@@ -994,6 +996,15 @@ struct nx_action_timeout_act {
      /* Followed by a sequence of ofpact data */
 };
 OFP_ASSERT(sizeof(struct nx_action_timeout_act) == 16);
+
+struct nx_action_increment_cookie {
+    ovs_be16 type;
+    ovs_be16 len;
+    ovs_be32 vendor;
+    ovs_be16 subtype;
+    uint8_t pad[6];
+};
+OFP_ASSERT(sizeof(struct nx_action_increment_cookie) == 16);
 
 /* Action structure for NXAST_FIN_TIMEOUT.
  *
