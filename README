@@ -1,3 +1,43 @@
+Contributions to Open vSwitch:
+
+New Actions:
+timeout_act:
+  Installing a rule with timeout_act creates a list of actions which are 
+  only executing upon a rule timing out. 
+  Syntax:
+    timeout_act(..regular syntax for actions..)
+
+learn_delete:
+  Exact same syntax as the learn action, except a rule is deleted instead
+  of being added.
+  
+  Example (run as root):
+    ovs-vsctl add-br br0
+    ovs-ofctl add-flow br0 "table=1, priority=5, eth_dst=11:11:11:11:11:11 actions=resubmit(,3)"
+    ovs-ofctl add-flow br0 "table=0, priority=20, actions=learn_delete(table=1, NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[]), resubmit(,2)"
+    ovs-appctl ofproto/trace br0 dl_dst=20:20:20:20:20:20,eth_src=11:11:11:11:11:11 -generate
+    ovs-ofctl dump-flows br0
+
+learn_learn:
+  The learn action which can install an arbitrary set of actions for the 
+  learned rule.
+  NOTE: Actions are enclosed within { }.
+  Example:
+    ovs-vsctl add-br br0
+    ovs-ofctl add-flow br0 "table=2 action=learn_learn(table=10, NXM_OF_VLAN_TCI[0..11], actions={resubmit(,3)}), resubmit(,10)"
+    ovs-appctl ofproto/trace br0 dl_dst=10:10:10:10:10:10,vlan_tci=0x3 -generate
+    ovs-ofctl dump-flows br0
+
+increment_cookie:
+  Increment a global cookie value, which can be used for newly learned rules.
+  NOTE: In order to use the cookie value, use learn_learn's property use_atomic_cookie.
+  Example:
+    ovs-vsctl add-br br0
+    ovs-ofctl add-flow br0 "table=0 action=increment_cookie(),learn_learn(table=10, use_atomic_cookie=1, NXM_OF_VLAN_TCI[0..11], NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[]),learn_learn(table=11, use_atomic_cookie=1, NXM_OF_VLAN_TCI[0..11], NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[]),resubmit(,3)"
+    ovs-appctl ofproto/trace br0 dl_src=10:10:10:10:10:10,vlan_tci=0x3 -generate
+    ovs-ofctl dump-flows br0
+
+-------------------------------------------------------------------------------
                  Open vSwitch <http://openvswitch.org>
 
 What is Open vSwitch?
