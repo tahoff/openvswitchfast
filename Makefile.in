@@ -288,9 +288,11 @@ am__lib_libopenvswitch_a_SOURCES_DIST = lib/aes128.c lib/aes128.h \
 	lib/fatal-signal.c lib/fatal-signal.h lib/flow.c lib/flow.h \
 	lib/guarded-list.c lib/guarded-list.h lib/hash.c lib/hash.h \
 	lib/hindex.c lib/hindex.h lib/hmap.c lib/hmap.h lib/hmapx.c \
-	lib/hmapx.h lib/jhash.c lib/jhash.h lib/json.c lib/json.h \
-	lib/jsonrpc.c lib/jsonrpc.h lib/lacp.c lib/lacp.h lib/latch.c \
-	lib/latch.h lib/learn.c lib/learn.h lib/learning-switch.c \
+	lib/hmapx.h lib/increment_cookie.c lib/increment_cookie.h \
+	lib/jhash.c lib/jhash.h lib/json.c lib/json.h lib/jsonrpc.c \
+	lib/jsonrpc.h lib/lacp.c lib/lacp.h lib/latch.c lib/latch.h \
+	lib/learn.c lib/learn.h lib/learn_delete.c lib/learn_delete.h \
+	lib/learn_learn.c lib/learn_learn.h lib/learning-switch.c \
 	lib/learning-switch.h lib/list.c lib/list.h lib/lockfile.c \
 	lib/lockfile.h lib/mac-learning.c lib/mac-learning.h \
 	lib/match.c lib/match.h lib/memory.c lib/memory.h \
@@ -325,16 +327,16 @@ am__lib_libopenvswitch_a_SOURCES_DIST = lib/aes128.c lib/aes128.h \
 	lib/stream-fd.h lib/stream-provider.h lib/stream-ssl.h \
 	lib/stream-tcp.c lib/stream-unix.c lib/stream.c lib/stream.h \
 	lib/string.c lib/string.h lib/svec.c lib/svec.h lib/table.c \
-	lib/table.h lib/timer.c lib/timer.h lib/timeval.c \
-	lib/timeval.h lib/token-bucket.c lib/token-bucket.h \
-	lib/type-props.h lib/unaligned.h lib/unicode.c lib/unicode.h \
-	lib/unixctl.c lib/unixctl.h lib/util.c lib/util.h lib/uuid.c \
-	lib/uuid.h lib/valgrind.h lib/vconn-provider.h \
-	lib/vconn-stream.c lib/vconn.c lib/vconn.h lib/vlan-bitmap.c \
-	lib/vlan-bitmap.h lib/vlandev.c lib/vlandev.h lib/vlog.c \
-	lib/vlog.h lib/vswitch-idl.c lib/vswitch-idl.h \
-	lib/dpif-linux.c lib/dpif-linux.h lib/netdev-linux.c \
-	lib/netdev-linux.h lib/netlink-notifier.c \
+	lib/table.h lib/timeout_act.c lib/timeout_act.h lib/timer.c \
+	lib/timer.h lib/timeval.c lib/timeval.h lib/token-bucket.c \
+	lib/token-bucket.h lib/type-props.h lib/unaligned.h \
+	lib/unicode.c lib/unicode.h lib/unixctl.c lib/unixctl.h \
+	lib/util.c lib/util.h lib/uuid.c lib/uuid.h lib/valgrind.h \
+	lib/vconn-provider.h lib/vconn-stream.c lib/vconn.c \
+	lib/vconn.h lib/vlan-bitmap.c lib/vlan-bitmap.h lib/vlandev.c \
+	lib/vlandev.h lib/vlog.c lib/vlog.h lib/vswitch-idl.c \
+	lib/vswitch-idl.h lib/dpif-linux.c lib/dpif-linux.h \
+	lib/netdev-linux.c lib/netdev-linux.h lib/netlink-notifier.c \
 	lib/netlink-notifier.h lib/netlink-protocol.h \
 	lib/netlink-socket.c lib/netlink-socket.h lib/rtnetlink-link.c \
 	lib/rtnetlink-link.h lib/route-table.c lib/route-table.h \
@@ -369,8 +371,10 @@ am_lib_libopenvswitch_a_OBJECTS = lib/aes128.$(OBJEXT) \
 	lib/fatal-signal.$(OBJEXT) lib/flow.$(OBJEXT) \
 	lib/guarded-list.$(OBJEXT) lib/hash.$(OBJEXT) \
 	lib/hindex.$(OBJEXT) lib/hmap.$(OBJEXT) lib/hmapx.$(OBJEXT) \
-	lib/jhash.$(OBJEXT) lib/json.$(OBJEXT) lib/jsonrpc.$(OBJEXT) \
-	lib/lacp.$(OBJEXT) lib/latch.$(OBJEXT) lib/learn.$(OBJEXT) \
+	lib/increment_cookie.$(OBJEXT) lib/jhash.$(OBJEXT) \
+	lib/json.$(OBJEXT) lib/jsonrpc.$(OBJEXT) lib/lacp.$(OBJEXT) \
+	lib/latch.$(OBJEXT) lib/learn.$(OBJEXT) \
+	lib/learn_delete.$(OBJEXT) lib/learn_learn.$(OBJEXT) \
 	lib/learning-switch.$(OBJEXT) lib/list.$(OBJEXT) \
 	lib/lockfile.$(OBJEXT) lib/mac-learning.$(OBJEXT) \
 	lib/match.$(OBJEXT) lib/memory.$(OBJEXT) \
@@ -396,14 +400,15 @@ am_lib_libopenvswitch_a_OBJECTS = lib/aes128.$(OBJEXT) \
 	lib/stream-fd.$(OBJEXT) lib/stream-tcp.$(OBJEXT) \
 	lib/stream-unix.$(OBJEXT) lib/stream.$(OBJEXT) \
 	lib/string.$(OBJEXT) lib/svec.$(OBJEXT) lib/table.$(OBJEXT) \
-	lib/timer.$(OBJEXT) lib/timeval.$(OBJEXT) \
-	lib/token-bucket.$(OBJEXT) lib/unicode.$(OBJEXT) \
-	lib/unixctl.$(OBJEXT) lib/util.$(OBJEXT) lib/uuid.$(OBJEXT) \
-	lib/vconn-stream.$(OBJEXT) lib/vconn.$(OBJEXT) \
-	lib/vlan-bitmap.$(OBJEXT) lib/vlandev.$(OBJEXT) \
-	lib/vlog.$(OBJEXT) lib/vswitch-idl.$(OBJEXT) $(am__objects_1) \
-	$(am__objects_2) $(am__objects_3) $(am__objects_4) \
-	$(am__objects_5) $(am__objects_6) $(am__objects_7)
+	lib/timeout_act.$(OBJEXT) lib/timer.$(OBJEXT) \
+	lib/timeval.$(OBJEXT) lib/token-bucket.$(OBJEXT) \
+	lib/unicode.$(OBJEXT) lib/unixctl.$(OBJEXT) lib/util.$(OBJEXT) \
+	lib/uuid.$(OBJEXT) lib/vconn-stream.$(OBJEXT) \
+	lib/vconn.$(OBJEXT) lib/vlan-bitmap.$(OBJEXT) \
+	lib/vlandev.$(OBJEXT) lib/vlog.$(OBJEXT) \
+	lib/vswitch-idl.$(OBJEXT) $(am__objects_1) $(am__objects_2) \
+	$(am__objects_3) $(am__objects_4) $(am__objects_5) \
+	$(am__objects_6) $(am__objects_7)
 @HAVE_OPENSSL_TRUE@am__objects_8 = lib/dhparams.$(OBJEXT)
 nodist_lib_libopenvswitch_a_OBJECTS = lib/dirs.$(OBJEXT) \
 	$(am__objects_8)
@@ -1475,9 +1480,11 @@ lib_libopenvswitch_a_SOURCES = lib/aes128.c lib/aes128.h \
 	lib/fatal-signal.c lib/fatal-signal.h lib/flow.c lib/flow.h \
 	lib/guarded-list.c lib/guarded-list.h lib/hash.c lib/hash.h \
 	lib/hindex.c lib/hindex.h lib/hmap.c lib/hmap.h lib/hmapx.c \
-	lib/hmapx.h lib/jhash.c lib/jhash.h lib/json.c lib/json.h \
-	lib/jsonrpc.c lib/jsonrpc.h lib/lacp.c lib/lacp.h lib/latch.c \
-	lib/latch.h lib/learn.c lib/learn.h lib/learning-switch.c \
+	lib/hmapx.h lib/increment_cookie.c lib/increment_cookie.h \
+	lib/jhash.c lib/jhash.h lib/json.c lib/json.h lib/jsonrpc.c \
+	lib/jsonrpc.h lib/lacp.c lib/lacp.h lib/latch.c lib/latch.h \
+	lib/learn.c lib/learn.h lib/learn_delete.c lib/learn_delete.h \
+	lib/learn_learn.c lib/learn_learn.h lib/learning-switch.c \
 	lib/learning-switch.h lib/list.c lib/list.h lib/lockfile.c \
 	lib/lockfile.h lib/mac-learning.c lib/mac-learning.h \
 	lib/match.c lib/match.h lib/memory.c lib/memory.h \
@@ -1512,16 +1519,17 @@ lib_libopenvswitch_a_SOURCES = lib/aes128.c lib/aes128.h \
 	lib/stream-fd.h lib/stream-provider.h lib/stream-ssl.h \
 	lib/stream-tcp.c lib/stream-unix.c lib/stream.c lib/stream.h \
 	lib/string.c lib/string.h lib/svec.c lib/svec.h lib/table.c \
-	lib/table.h lib/timer.c lib/timer.h lib/timeval.c \
-	lib/timeval.h lib/token-bucket.c lib/token-bucket.h \
-	lib/type-props.h lib/unaligned.h lib/unicode.c lib/unicode.h \
-	lib/unixctl.c lib/unixctl.h lib/util.c lib/util.h lib/uuid.c \
-	lib/uuid.h lib/valgrind.h lib/vconn-provider.h \
-	lib/vconn-stream.c lib/vconn.c lib/vconn.h lib/vlan-bitmap.c \
-	lib/vlan-bitmap.h lib/vlandev.c lib/vlandev.h lib/vlog.c \
-	lib/vlog.h lib/vswitch-idl.c lib/vswitch-idl.h $(am__append_9) \
-	$(am__append_10) $(am__append_11) $(am__append_12) \
-	$(am__append_13) $(am__append_14) $(am__append_16)
+	lib/table.h lib/timeout_act.c lib/timeout_act.h lib/timer.c \
+	lib/timer.h lib/timeval.c lib/timeval.h lib/token-bucket.c \
+	lib/token-bucket.h lib/type-props.h lib/unaligned.h \
+	lib/unicode.c lib/unicode.h lib/unixctl.c lib/unixctl.h \
+	lib/util.c lib/util.h lib/uuid.c lib/uuid.h lib/valgrind.h \
+	lib/vconn-provider.h lib/vconn-stream.c lib/vconn.c \
+	lib/vconn.h lib/vlan-bitmap.c lib/vlan-bitmap.h lib/vlandev.c \
+	lib/vlandev.h lib/vlog.c lib/vlog.h lib/vswitch-idl.c \
+	lib/vswitch-idl.h $(am__append_9) $(am__append_10) \
+	$(am__append_11) $(am__append_12) $(am__append_13) \
+	$(am__append_14) $(am__append_16)
 nodist_lib_libopenvswitch_a_SOURCES = lib/dirs.c $(am__append_15)
 lib_libsflow_a_SOURCES = \
 	lib/sflow_api.h \
@@ -2066,6 +2074,8 @@ lib/hindex.$(OBJEXT): lib/$(am__dirstamp) \
 	lib/$(DEPDIR)/$(am__dirstamp)
 lib/hmap.$(OBJEXT): lib/$(am__dirstamp) lib/$(DEPDIR)/$(am__dirstamp)
 lib/hmapx.$(OBJEXT): lib/$(am__dirstamp) lib/$(DEPDIR)/$(am__dirstamp)
+lib/increment_cookie.$(OBJEXT): lib/$(am__dirstamp) \
+	lib/$(DEPDIR)/$(am__dirstamp)
 lib/jhash.$(OBJEXT): lib/$(am__dirstamp) lib/$(DEPDIR)/$(am__dirstamp)
 lib/json.$(OBJEXT): lib/$(am__dirstamp) lib/$(DEPDIR)/$(am__dirstamp)
 lib/jsonrpc.$(OBJEXT): lib/$(am__dirstamp) \
@@ -2073,6 +2083,10 @@ lib/jsonrpc.$(OBJEXT): lib/$(am__dirstamp) \
 lib/lacp.$(OBJEXT): lib/$(am__dirstamp) lib/$(DEPDIR)/$(am__dirstamp)
 lib/latch.$(OBJEXT): lib/$(am__dirstamp) lib/$(DEPDIR)/$(am__dirstamp)
 lib/learn.$(OBJEXT): lib/$(am__dirstamp) lib/$(DEPDIR)/$(am__dirstamp)
+lib/learn_delete.$(OBJEXT): lib/$(am__dirstamp) \
+	lib/$(DEPDIR)/$(am__dirstamp)
+lib/learn_learn.$(OBJEXT): lib/$(am__dirstamp) \
+	lib/$(DEPDIR)/$(am__dirstamp)
 lib/learning-switch.$(OBJEXT): lib/$(am__dirstamp) \
 	lib/$(DEPDIR)/$(am__dirstamp)
 lib/list.$(OBJEXT): lib/$(am__dirstamp) lib/$(DEPDIR)/$(am__dirstamp)
@@ -2170,6 +2184,8 @@ lib/string.$(OBJEXT): lib/$(am__dirstamp) \
 	lib/$(DEPDIR)/$(am__dirstamp)
 lib/svec.$(OBJEXT): lib/$(am__dirstamp) lib/$(DEPDIR)/$(am__dirstamp)
 lib/table.$(OBJEXT): lib/$(am__dirstamp) lib/$(DEPDIR)/$(am__dirstamp)
+lib/timeout_act.$(OBJEXT): lib/$(am__dirstamp) \
+	lib/$(DEPDIR)/$(am__dirstamp)
 lib/timer.$(OBJEXT): lib/$(am__dirstamp) lib/$(DEPDIR)/$(am__dirstamp)
 lib/timeval.$(OBJEXT): lib/$(am__dirstamp) \
 	lib/$(DEPDIR)/$(am__dirstamp)
@@ -2961,12 +2977,15 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/hindex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/hmap.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/hmapx.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/increment_cookie.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/jhash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/json.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/jsonrpc.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/lacp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/latch.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/learn.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/learn_delete.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/learn_learn.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/learning-switch.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/lib_libsflow_a-sflow_agent.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/lib_libsflow_a-sflow_poller.Po@am__quote@
@@ -3037,6 +3056,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/string.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/svec.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/table.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/timeout_act.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/timer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/timeval.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/token-bucket.Po@am__quote@
