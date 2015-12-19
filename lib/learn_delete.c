@@ -31,6 +31,14 @@
 #include "unaligned.h"
 #include <unistd.h>
 
+static uint8_t
+get_u8(const void **pp) {
+    const uint8_t *p = *pp;
+    uint8_t value = *p;
+    *pp = p + 1;
+    return value;
+}
+
 static ovs_be16
 get_be16(const void **pp)
 {
@@ -124,6 +132,8 @@ learn_delete_from_openflow(const struct nx_action_learn_delete *nal,
         if (!header) {
             break;
         }
+
+        uint8_t deferal_count = get_u8(&p);
 
         spec = ofpbuf_put_zeros(ofpacts, sizeof *spec);
         learn = ofpacts->l2;
@@ -276,6 +286,9 @@ learn_delete_to_nxast(const struct ofpact_learn_delete *learn,
 
     for (spec = learn->specs; spec < &learn->specs[learn->n_specs]; spec++) {
         put_u16(openflow, spec->n_bits | spec->dst_type | spec->src_type);
+
+        // Add the defer count
+        ofpbuf_put(openflow, &spec->defer_count, sizeof spec->defer_count);
 
         if (spec->src_type == NX_LEARN_SRC_FIELD) {
             put_u32(openflow, spec->src.field->nxm_header);

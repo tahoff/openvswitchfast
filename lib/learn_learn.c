@@ -20,6 +20,7 @@
 
 #include "byte-order.h"
 #include "dynamic-string.h"
+#include <inttypes.h>
 #include "match.h"
 #include "meta-flow.h"
 #include "nx-match.h"
@@ -31,6 +32,19 @@
 #include "openflow/openflow.h"
 #include "unaligned.h"
 #include <unistd.h>
+
+void populate_deferral_values(struct ofpact_learn_learn *act,
+                              const struct flow *flow);
+void do_deferral(struct ofpact *ofpacts, uint32_t ofpacts_len,
+                 const struct flow *flow);
+
+static uint8_t
+get_u8(const void **pp) {
+    const uint8_t *p = *pp;
+    uint8_t value = *p;
+    *pp = p + 1;
+    return value;
+}
 
 static ovs_be16
 get_be16(const void **pp)
@@ -101,6 +115,67 @@ learn_min_len(uint16_t header)
         min_len += sizeof(ovs_be16); /* dst_ofs */
     }
     return min_len;
+}
+
+void
+populate_deferral_values(struct ofpact_learn_learn *learn,
+                         const struct flow *flow) {
+    struct ofpact_learn_spec *spec;
+    const struct ofpact_learn_spec *end;
+
+    fprintf(stderr, "populate_deferral_values called\n");
+
+    spec = (struct ofpact_learn_spec *) learn->data;
+    end = &spec[learn->n_specs];
+
+    // Do initial substitution
+    for (spec = (struct ofpact_learn_spec *) learn->data; spec < end; spec++) {
+        fprintf(stderr, "populate_deferral iter\n");
+        // TODO TEST
+        if (spec->defer_count == 0xff) {
+            continue;
+        } else if (spec->defer_count >= 1) {
+            spec->defer_count--;
+        } else {
+            // Parse value into an mf_value
+            const struct mf_field *dst;
+            union mf_value imm;
+           
+            dst = spec->src.field; 
+            mf_get_value(dst, flow, &imm);
+            //dst = mf_read_subfield(&spec->src, flow, &imm);
+            
+            // Memset & memcpy value into spec->src_imm
+            memset(&spec->src_imm, 0, sizeof spec->src_imm);
+            memcpy(&spec->src_imm.u8[sizeof spec->src_imm - dst->n_bytes],
+                           &imm, dst->n_bytes);
+           
+            spec->n_bits = spec->src.n_bits; 
+            
+            // Update the spec's src_type
+            spec->src_type = NX_LEARN_SRC_IMMEDIATE;
+            spec->defer_count = 0xff;
+        }
+    }
+
+    // Recursively call do_deferral on nested actions
+    struct ofpact *learn_actions;
+    learn_actions = (struct ofpact *) end; 
+    
+    do_deferral(learn_actions, learn->ofpacts_len, flow); 
+}
+
+void do_deferral(struct ofpact *ofpacts, uint32_t ofpacts_len,
+                 const struct flow *flow) {
+   struct ofpact *a;
+
+   fprintf(stderr, "do_deferral called\n");
+
+   OFPACT_FOR_EACH(a, ofpacts, ofpacts_len) {
+       if (a->type == OFPACT_LEARN_LEARN) {
+           populate_deferral_values(ofpact_get_LEARN_LEARN(a), flow);
+       }
+   }
 }
 
 /* Converts 'nal' into a "struct ofpact_learn_learn" and appends that struct to
@@ -180,6 +255,8 @@ learn_learn_from_openflow(const struct nx_action_learn_learn *nal,
             break;
         }
 
+        uint8_t deferal_count = get_u8(&p);
+
         spec = ofpbuf_put_zeros(ofpacts, sizeof *spec);
         learn = ofpacts->l2;
         learn->n_specs++;
@@ -189,6 +266,7 @@ learn_learn_from_openflow(const struct nx_action_learn_learn *nal,
         spec->src_type = header & NX_LEARN_SRC_MASK;
         spec->dst_type = header & NX_LEARN_DST_MASK;
         spec->n_bits = header & NX_LEARN_N_BITS_MASK;
+        spec->defer_count = deferal_count;
 
         /* Check for valid src and dst type combination. */
         if (spec->dst_type == NX_LEARN_DST_MATCH ||
@@ -312,11 +390,12 @@ learn_learn_check(const struct ofpact_learn_learn *learn,
          spec < spec_end; spec++) {
         enum ofperr error;
 
-        fprintf(stderr, "........");
+        /*fprintf(stderr, "........");
         for (i = 0; i < sizeof *spec; i++) {
             fprintf(stderr, "%d ", *(((char *) (spec)) + i));
         }
         fprintf(stderr, "........\n");
+        */
 
         /* Check the source. */
         if (spec->src_type == NX_LEARN_SRC_FIELD) {
@@ -436,6 +515,9 @@ learn_learn_to_nxast(const struct ofpact_learn_learn *learn,
             spec < end; spec++) {
         put_u16(openflow, spec->n_bits | spec->dst_type | spec->src_type);
 
+        // Add the defer count
+        ofpbuf_put(openflow, &spec->defer_count, sizeof spec->defer_count);
+
         if (spec->src_type == NX_LEARN_SRC_FIELD) {
             put_u32(openflow, spec->src.field->nxm_header);
             put_u16(openflow, spec->src.ofs);
@@ -454,6 +536,7 @@ learn_learn_to_nxast(const struct ofpact_learn_learn *learn,
             put_u16(openflow, spec->dst.ofs);
         }
 
+        /*
         int i;
         fprintf(stderr, "........");
         for (i = 0; i < sizeof *spec; i++) {
@@ -466,6 +549,7 @@ learn_learn_to_nxast(const struct ofpact_learn_learn *learn,
             fprintf(stderr, "%d ", *(((char *) (nal + 1)) + i));
         }
         fprintf(stderr, "........\n");
+        */
 
         n_specs++;
     }
@@ -513,6 +597,7 @@ learn_learn_execute(const struct ofpact_learn_learn *learn,
                     struct ofpbuf *ofpacts,
                     uint64_t cookie_count)
 {
+    fprintf(stderr, "learn_learn_execute\n");
     //if (learn->learn_on_timeout) {
     //    return;
     //}
@@ -612,6 +697,10 @@ learn_learn_execute(const struct ofpact_learn_learn *learn,
 
     struct ofpact *learn_actions;
     learn_actions = (struct ofpact *) end;
+
+    // Do spec substitution as needed
+    do_deferral(learn_actions, learn->ofpacts_len, flow);
+
     ofpbuf_put(ofpacts, learn_actions, learn->ofpacts_len);
 
     ofpact_pad(ofpacts);
@@ -809,7 +898,10 @@ learn_learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
     char *act_str;
     char *end_act_str;
 
+    fprintf(stderr, "learn_learn_parse__ called\n");
+
     act_str = strstr(orig, "actions");
+    end_act_str = NULL;
     if (act_str) {
         char bracket[2];
         bracket[0] = '}';
@@ -904,17 +996,43 @@ learn_learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
            fprintf(stderr, "learn_learn_parse__ learn->ofpacts_len=%u\n",
                    learn->ofpacts_len);
         } else {
+            uint8_t deferral_count;
             struct ofpact_learn_spec *spec;
             char *error;
+            deferral_count = 0xff;
 
             spec = ofpbuf_put_zeros(ofpacts, sizeof *spec);
             learn = ofpacts->l2;
             learn->n_specs++;
 
-            error = learn_learn_parse_spec(orig, name, value, spec);
+            char *defer_str;
+            defer_str = strstr(value, "(defer");
+            
+            if (!defer_str) {
+                error = learn_learn_parse_spec(orig, name, value, spec);
+            } else {
+                int deferral_err;
+                deferral_err = sscanf(strstr(value, "(defer"),
+                                             "(defer=%" SCNu8 ")",
+                                             &deferral_count);
+                if (deferral_err == 0) {
+                    return xstrdup("deferral syntax: (defer=#)");
+                }
+
+                char val_str[defer_str - value + 1];
+                memcpy(val_str, value, defer_str - value);
+                val_str[defer_str - value] = '\0';
+                
+                error = learn_learn_parse_spec(orig, name, val_str, spec);
+            }
+
             if (error) {
                 return error;
             }
+
+            // Attach deferral count
+            spec->defer_count = deferral_count; 
+            fprintf(stderr, "spec->defer_count=%u\n", spec->defer_count);
 
             /* Update 'match' to allow for satisfying destination
              * prerequisites. */
@@ -994,6 +1112,8 @@ learn_learn_format(const struct ofpact_learn_learn *learn, struct ds *s)
     const struct ofpact_learn_spec *spec_end;
     struct match match;
 
+    fprintf(stderr, "learn_learn_format\n");
+
     int j;
     fprintf(stderr,"__________ ");
     for (j = 0; j < learn->ofpact.len; j++) {
@@ -1055,6 +1175,11 @@ learn_learn_format(const struct ofpact_learn_learn *learn, struct ds *s)
                 ds_put_char(s, '=');
                 mf_format_subvalue(&spec->src_imm, s);
             }
+
+            if (spec->defer_count < 0xff) {
+                ds_put_format(s, "(defer=%" PRIu8 ")", spec->defer_count);
+            }
+
             break;
 
         case NX_LEARN_SRC_FIELD | NX_LEARN_DST_MATCH:

@@ -399,6 +399,7 @@ struct ofpact_resubmit {
 /* Part of struct ofpact_learn, below. */
 struct ofpact_learn_spec {
     int n_bits;                 /* Number of bits in source and dest. */
+    uint8_t defer_count;
 
     int src_type;               /* One of NX_LEARN_SRC_*. */
     struct mf_subfield src;     /* NX_LEARN_SRC_FIELD only. */

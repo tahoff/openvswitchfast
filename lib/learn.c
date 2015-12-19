@@ -31,6 +31,14 @@
 #include "unaligned.h"
 #include <unistd.h>
 
+static uint8_t
+get_u8(const void **pp) {
+    const uint8_t *p = *pp;
+    uint8_t value = *p;
+    *pp = p + 1;
+    return value;
+}
+
 static ovs_be16
 get_be16(const void **pp)
 {
@@ -142,6 +150,8 @@ learn_from_openflow(const struct nx_action_learn *nal, struct ofpbuf *ofpacts)
         if (!header) {
             break;
         }
+
+        uint8_t deferal_count = get_u8(&p);
 
         spec = ofpbuf_put_zeros(ofpacts, sizeof *spec);
         learn = ofpacts->l2;
@@ -323,6 +333,9 @@ learn_to_nxast(const struct ofpact_learn *learn, struct ofpbuf *openflow)
 
     for (spec = learn->specs; spec < &learn->specs[learn->n_specs]; spec++) {
         put_u16(openflow, spec->n_bits | spec->dst_type | spec->src_type);
+
+        // Add the defer count
+        ofpbuf_put(openflow, &spec->defer_count, sizeof spec->defer_count);
 
         if (spec->src_type == NX_LEARN_SRC_FIELD) {
             put_u32(openflow, spec->src.field->nxm_header);
@@ -594,6 +607,8 @@ learn_parse_load_immediate(const char *s, struct ofpact_learn_spec *spec)
     union mf_subvalue imm;
     char *error;
 
+    fprintf(stderr, "learn_parse_load_immediate s=%s\n", s);
+
     memset(&imm, 0, sizeof imm);
     if (s[0] == '0' && (s[1] == 'x' || s[1] == 'X') && arrow) {
         const char *in = arrow - 1;
@@ -643,9 +658,11 @@ static char * WARN_UNUSED_RESULT
 learn_parse_spec(const char *orig, char *name, char *value,
                  struct ofpact_learn_spec *spec)
 {
-    // TODO - Need to modify to add some form of parsing!
-    
+    fprintf(stderr, "learn_parse_load name=%s value=%s\n", name, value);
+
     if (mf_from_name(name)) {
+        fprintf(stderr, "learn_parse_spec case 1\n");
+
         const struct mf_field *dst = mf_from_name(name);
         union mf_value imm;
         char *error;
@@ -665,6 +682,8 @@ learn_parse_spec(const char *orig, char *name, char *value,
         spec->dst.ofs = 0;
         spec->dst.n_bits = dst->n_bits;
     } else if (strchr(name, '[')) {
+        fprintf(stderr, "learn_parse_spec case 2\n");
+        
         /* Parse destination and check prerequisites. */
         char *error;
 
@@ -807,11 +826,6 @@ learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
     }
 
     ofpact_update_len(ofpacts, &learn->ofpact);
-    
-    int j;
-    for (j = 0; j < learn->ofpact.len; j++) {
-        fprintf(stderr, "%d ", *(ptr + j));
-    }
     return NULL;
 }
 
@@ -869,7 +883,6 @@ learn_format(const struct ofpact_learn *learn, struct ds *s)
         ds_put_format(s, ",cookie=%#"PRIx64, learn->cookie);
     }
 
-    fprintf(stderr, "learn_on_timeout value %s\n", learn->learn_on_timeout != 0 ? "true" : "false");
     /*if (learn->learn_on_timeout != 0) {
         ds_put_format(s, ",learn_on_timeout=%"PRIx64, 1);
     } else {
