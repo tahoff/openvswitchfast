@@ -4404,7 +4404,7 @@ void timeout_act_execute(const struct ofpact_timeout_act *act,
     struct ofputil_flow_mod fm;
     struct flow_wildcards wc;
     uint64_t atomic_cookie;
-    atomic_cookie = 0;
+    atomic_cookie = get_cookie_val();
 
     wc.masks = *flow;
 

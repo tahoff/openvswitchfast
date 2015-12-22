@@ -31,5 +31,6 @@ uint64_t increment_cookie_execute(
 char *increment_cookie_parse(char *, struct ofpbuf *ofpacts) WARN_UNUSED_RESULT;
 void increment_cookie_format(const struct ofpact_increment_cookie *,
                              struct ds *);
+uint64_t get_cookie_val();
 
 #endif /* increment_cookie.h */

@@ -88,6 +88,13 @@ increment_cookie_execute(const struct ofpact_increment_cookie *incr_cookie,
     return (uint64_t) orig; 
 }
 
+uint64_t get_cookie_val()
+{
+    unsigned long long int orig;
+    atomic_add(&cookie_count, 0, &orig);
+    return (uint64_t) orig;    
+}
+
 /* Returns NULL if successful, otherwise a malloc()'d string describing the
  * error.  The caller is responsible for freeing the returned string. */
 static char * WARN_UNUSED_RESULT
