@@ -33,6 +33,7 @@
 #include "increment_cookie.h"
 #include "learn.h"
 #include "learn_delete.h"
+#include "learn_learn.h"
 #include "meta-flow.h"
 #include "netdev.h"
 #include "nx-match.h"
@@ -4402,6 +4403,9 @@ void timeout_act_execute(const struct ofpact_timeout_act *act,
     struct ofpact *a;
     struct ofputil_flow_mod fm;
     struct flow_wildcards wc;
+    uint64_t atomic_cookie;
+    atomic_cookie = 0;
+
     wc.masks = *flow;
 
     ofproto = rule->ofproto;
@@ -4452,6 +4456,41 @@ void timeout_act_execute(const struct ofpact_timeout_act *act,
                     nxm_execute_reg_load(ofpact_get_REG_LOAD(a), flow);
                     break;
                     // Do nothing in the default case, because it isn't supported.
+                case OFPACT_LEARN_DELETE:
+                    ofpbuf_use_stub(&ofpacts_buf, ofpacts_stub, sizeof ofpacts_stub);
+
+                    // Populate fm with the learn attributes
+                    //ovs_mutex_unlock(&ofproto_mutex);
+                    learn_delete_execute(ofpact_get_LEARN_DELETE(a), flow,
+                         &fm, &ofpacts_buf, atomic_cookie);
+
+                    // ofproto_flow_mod(struct ofproto *ofproto, struct ofputil_flow_mod *fm)
+                    ofproto_flow_mod(ofproto, &fm);
+                    ofpbuf_uninit(&ofpacts_buf); 
+                    break;
+                case OFPACT_INCREMENT_COOKIE:
+                    atomic_cookie = increment_cookie_execute(
+                        ofpact_get_INCREMENT_COOKIE(a), flow);
+                    break;
+                case OFPACT_LEARN_LEARN:
+                    ofpbuf_use_stub(&ofpacts_buf, ofpacts_stub, sizeof ofpacts_stub);
+
+                    // Create flow_mod
+                    learn = ofpact_get_LEARN(a);
+
+                    //learn_mask(learn, &wc);
+                    
+                    // Populate fm with the learn attributes
+                    //ovs_mutex_unlock(&ofproto_mutex);
+                    learn_learn_execute(ofpact_get_LEARN_LEARN(a), flow, &fm,
+                                        &ofpacts_buf, atomic_cookie);
+                    
+                    // ofproto_flow_mod(struct ofproto *ofproto, struct ofputil_flow_mod *fm)
+                    ofproto_flow_mod(ofproto, &fm);
+                    ofpbuf_uninit(&ofpacts_buf);
+                    //ovs_mutex_trylock(&ofproto_mutex);
+                    break;
+
                 case OFPACT_CONTROLLER:
                 case OFPACT_OUTPUT:
                 case OFPACT_ENQUEUE:
@@ -4469,8 +4508,6 @@ void timeout_act_execute(const struct ofpact_timeout_act *act,
                 case OFPACT_SET_L4_SRC_PORT:
                 case OFPACT_SET_L4_DST_PORT:
                 case OFPACT_REG_MOVE:
-
-
                 case OFPACT_STACK_PUSH:
                 case OFPACT_STACK_POP:
                 case OFPACT_DEC_TTL:

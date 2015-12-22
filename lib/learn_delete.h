@@ -41,7 +41,8 @@ void learn_delete_to_nxast(const struct ofpact_learn_delete *,
                            struct ofpbuf *openflow);
 
 void learn_delete_execute(const struct ofpact_learn_delete *, const struct flow *,
-                          struct ofputil_flow_mod *, struct ofpbuf *ofpacts);
+                          struct ofputil_flow_mod *, struct ofpbuf *ofpacts,
+                          uint64_t atomic_cookie);
 void learn_delete_mask(const struct ofpact_learn_delete *, struct flow_wildcards *);
 
 char *learn_delete_parse(char *, struct ofpbuf *ofpacts) WARN_UNUSED_RESULT;

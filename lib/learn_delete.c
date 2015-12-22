@@ -106,6 +106,7 @@ learn_delete_from_openflow(const struct nx_action_learn_delete *nal,
     learn->priority = ntohs(nal->priority);
     learn->cookie = ntohll(nal->cookie);
     learn->table_id = nal->table_id;
+    learn->use_atomic_cookie = nal->use_atomic_cookie;
 
     /* We only support "send-flow-removed" for now. */
     switch (ntohs(nal->flags)) {
@@ -283,7 +284,8 @@ learn_delete_to_nxast(const struct ofpact_learn_delete *learn,
     nal->cookie = htonll(learn->cookie);
     nal->flags = htons(learn->flags);
     nal->table_id = learn->table_id;
-
+    nal->use_atomic_cookie = learn->use_atomic_cookie;
+    
     for (spec = learn->specs; spec < &learn->specs[learn->n_specs]; spec++) {
         put_u16(openflow, spec->n_bits | spec->dst_type | spec->src_type);
 
@@ -327,16 +329,25 @@ learn_delete_to_nxast(const struct ofpact_learn_delete *learn,
 void
 learn_delete_execute(const struct ofpact_learn_delete *learn,
                      const struct flow *flow, struct ofputil_flow_mod *fm,
-                     struct ofpbuf *ofpacts)
+                     struct ofpbuf *ofpacts, uint64_t atomic_cookie)
 {
     const struct ofpact_learn_spec *spec;
     struct ofpact_resubmit *resubmit;
 
     match_init_catchall(&fm->match);
     fm->priority = learn->priority;
-    fm->cookie = htonll(0);
-    fm->cookie_mask = htonll(0);
-    fm->new_cookie = htonll(learn->cookie);
+    if (learn->use_atomic_cookie) {
+        fm->cookie = htonll(atomic_cookie);
+        fm->cookie_mask = htonll(atomic_cookie);
+        fm->new_cookie = htonll(atomic_cookie);
+    } else {
+        //fm->cookie = htonll(0);
+        //fm->cookie_mask = htonll(0);
+        fm->cookie = htonll(learn->cookie);
+        fm->cookie_mask = htonll(learn->cookie);
+        fm->new_cookie = htonll(learn->cookie);
+    }
+
     fm->modify_cookie = fm->new_cookie != htonll(UINT64_MAX);
     fm->table_id = learn->table_id;
     fm->command = OFPFC_DELETE;
@@ -604,6 +615,8 @@ learn_delete_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
             learn->priority = atoi(value);
         } else if (!strcmp(name, "cookie")) {
             learn->cookie = strtoull(value, NULL, 0);
+        } else if (!strcmp(name, "use_atomic_cookie")) {
+            learn->use_atomic_cookie = atoi(value);
         } else {
             struct ofpact_learn_spec *spec;
             char *error;
