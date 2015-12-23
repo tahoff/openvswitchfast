@@ -106,7 +106,7 @@ learn_delete_from_openflow(const struct nx_action_learn_delete *nal,
     learn->priority = ntohs(nal->priority);
     learn->cookie = ntohll(nal->cookie);
     learn->table_id = nal->table_id;
-    learn->use_atomic_cookie = nal->use_atomic_cookie;
+    learn->cookie_spec = nal->cookie_spec;
 
     /* We only support "send-flow-removed" for now. */
     switch (ntohs(nal->flags)) {
@@ -284,7 +284,7 @@ learn_delete_to_nxast(const struct ofpact_learn_delete *learn,
     nal->cookie = htonll(learn->cookie);
     nal->flags = htons(learn->flags);
     nal->table_id = learn->table_id;
-    nal->use_atomic_cookie = learn->use_atomic_cookie;
+    nal->cookie_spec = learn->cookie_spec;
     
     for (spec = learn->specs; spec < &learn->specs[learn->n_specs]; spec++) {
         put_u16(openflow, spec->n_bits | spec->dst_type | spec->src_type);
@@ -326,6 +326,7 @@ learn_delete_to_nxast(const struct ofpact_learn_delete *learn,
  * 'ofpacts' buffer.
  *
  * The caller has to actually execute 'fm'. */
+/*
 void
 learn_delete_execute(const struct ofpact_learn_delete *learn,
                      const struct flow *flow, struct ofputil_flow_mod *fm,
@@ -406,7 +407,6 @@ learn_delete_execute(const struct ofpact_learn_delete *learn,
         case NX_LEARN_DST_RESERVED:
             resubmit = ofpact_put_RESUBMIT(ofpacts);
             resubmit->ofpact.compat = OFPUTIL_NXAST_RESUBMIT_TABLE;
-            /* hard coded values */
             resubmit->table_id = 2;
             break; 
 
@@ -417,6 +417,7 @@ learn_delete_execute(const struct ofpact_learn_delete *learn,
     fm->ofpacts = ofpacts->data;
     fm->ofpacts_len = ofpacts->size;
 }
+*/
 
 /* Perform a bitwise-OR on 'wc''s fields that are relevant as sources in
  * the learn_delete action 'learn'. */
@@ -616,7 +617,13 @@ learn_delete_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
         } else if (!strcmp(name, "cookie")) {
             learn->cookie = strtoull(value, NULL, 0);
         } else if (!strcmp(name, "use_atomic_cookie")) {
-            learn->use_atomic_cookie = atoi(value);
+            if (atoi(value) != 0) {
+                learn->cookie_spec = DELETE_USING_ATOMIC_COOKIE;
+            }
+        } else if (!strcmp(name, "use_rule_cookie")) {
+            if (atoi(value) != 0) {
+                learn->cookie_spec = DELETE_USING_RULE_COOKIE;
+            }
         } else {
             struct ofpact_learn_spec *spec;
             char *error;

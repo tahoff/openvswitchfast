@@ -966,7 +966,7 @@ struct nx_action_learn_delete {
     ovs_be16 subtype;           /* NXAST_LEARN_DELETE. */
     ovs_be16 flags;             /* Either 0 or OFPFF_SEND_FLOW_REM. */
     uint8_t table_id;           /* Table to insert flow entry. */
-    uint8_t use_atomic_cookie;  
+    uint8_t cookie_spec;  
     ovs_be16 priority;          /* Priority level of flow entry. */
     ovs_be64 cookie;            /* Cookie for new flow. */
     /* Followed by a sequence of flow_mod_spec elements, as described above,

@@ -24,13 +24,34 @@
 #include "timer.h"
 #include "util.h"
 #include "ovs-thread.h"
+#include "ofproto/ofproto-provider.h"
 
 union user_action_cookie;
 struct dpif_flow_stats;
 struct ofproto_dpif;
 struct ofport_dpif;
 struct dpif_backer;
-struct OVS_LOCKABLE rule_dpif;
+
+struct OVS_LOCKABLE rule_dpif {
+    struct rule up;
+
+    /* These statistics:
+     *
+     *   - Do include packets and bytes from facets that have been deleted or
+     *     whose own statistics have been folded into the rule.
+     *
+     *   - Do include packets and bytes sent "by hand" that were accounted to
+     *     the rule without any facet being involved (this is a rare corner
+     *     case in rule_execute()).
+     *
+     *   - Do not include packet or bytes that can be obtained from any facet's
+     *     packet_count or byte_count member or that can be obtained from the
+     *     datapath by, e.g., dpif_flow_get() for any subfacet.
+     */
+    struct ovs_mutex stats_mutex;
+    uint64_t packet_count OVS_GUARDED;  /* Number of packets received. */
+    uint64_t byte_count OVS_GUARDED;    /* Number of bytes received. */
+};
 
 /* Ofproto-dpif -- DPIF based ofproto implementation.
  *

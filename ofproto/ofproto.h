@@ -37,8 +37,11 @@ struct cfm_settings;
 struct cls_rule;
 struct netdev;
 struct ofpact_timeout_act;
+struct ofpact_learn_delete;
+struct ofpbuf;
 struct ofproto;
 struct ofport;
+struct ofputil_flow_mod;
 struct shash;
 struct simap;
 struct smap;
@@ -441,6 +444,10 @@ uint32_t ofproto_get_provider_meter_id(const struct ofproto *,
 
 void timeout_act_execute(const struct ofpact_timeout_act *, struct flow *,
                          struct rule *);
+void learn_delete_execute(const struct ofpact_learn_delete *learn,
+        const struct flow *flow,
+        struct ofputil_flow_mod *fm, struct ofpbuf *ofpacts,
+        uint64_t atomic_cookie, struct rule *rule);
 
 #ifdef  __cplusplus
 }

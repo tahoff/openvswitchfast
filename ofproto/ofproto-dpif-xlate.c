@@ -2149,7 +2149,8 @@ xlate_increment_cookie_action(struct xlate_ctx *ctx,
 static void
 xlate_learn_delete_action(struct xlate_ctx *ctx,
                           const struct ofpact_learn_delete *learn,
-                          uint64_t atomic_cookie)
+                          uint64_t atomic_cookie,
+                          struct rule_dpif *rule)
 {
     uint64_t ofpacts_stub[1024 / 8];
     struct ofputil_flow_mod fm;
@@ -2164,7 +2165,8 @@ xlate_learn_delete_action(struct xlate_ctx *ctx,
     }
 
     ofpbuf_use_stub(&ofpacts, ofpacts_stub, sizeof ofpacts_stub);
-    learn_delete_execute(learn, &ctx->xin->flow, &fm, &ofpacts, atomic_cookie);
+    learn_delete_execute(learn, &ctx->xin->flow, &fm, &ofpacts,
+        atomic_cookie, rule ? &rule->up : NULL);
     ofproto_dpif_flow_mod(ctx->xbridge->ofproto, &fm);
     ofpbuf_uninit(&ofpacts);
 }
@@ -2419,7 +2421,8 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
             break;
  
         case OFPACT_LEARN_DELETE:
-            xlate_learn_delete_action(ctx, ofpact_get_LEARN_DELETE(a), cookie_count);
+            xlate_learn_delete_action(ctx, ofpact_get_LEARN_DELETE(a),
+                cookie_count, ctx->xin->rule);
             break;
         
         case OFPACT_INCREMENT_COOKIE:

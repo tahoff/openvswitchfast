@@ -31,6 +31,7 @@ struct lacp;
 struct dpif_ipfix;
 struct dpif_sflow;
 struct mac_learning;
+struct rule_dpif;
 
 struct xlate_out {
     /* Wildcards relevant in translation.  Any fields that were used to

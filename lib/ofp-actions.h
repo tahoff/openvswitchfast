@@ -462,7 +462,7 @@ struct ofpact_learn_delete {
     uint64_t cookie;            /* Cookie for new flow. */
     enum ofputil_flow_mod_flags flags;
     uint8_t table_id;           /* Table to insert flow entry. */
-    bool use_atomic_cookie;
+    uint8_t cookie_spec;        /* See DELETE_USING_..._COOKIE */
 
     unsigned int n_specs;
     struct ofpact_learn_spec specs[];

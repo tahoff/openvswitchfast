@@ -85,27 +85,6 @@ BUILD_ASSERT_DECL(N_TABLES >= 2 && N_TABLES <= 255);
 struct flow_miss;
 struct facet;
 
-struct rule_dpif {
-    struct rule up;
-
-    /* These statistics:
-     *
-     *   - Do include packets and bytes from facets that have been deleted or
-     *     whose own statistics have been folded into the rule.
-     *
-     *   - Do include packets and bytes sent "by hand" that were accounted to
-     *     the rule without any facet being involved (this is a rare corner
-     *     case in rule_execute()).
-     *
-     *   - Do not include packet or bytes that can be obtained from any facet's
-     *     packet_count or byte_count member or that can be obtained from the
-     *     datapath by, e.g., dpif_flow_get() for any subfacet.
-     */
-    struct ovs_mutex stats_mutex;
-    uint64_t packet_count OVS_GUARDED;  /* Number of packets received. */
-    uint64_t byte_count OVS_GUARDED;    /* Number of bytes received. */
-};
-
 static void rule_get_stats(struct rule *, uint64_t *packets, uint64_t *bytes);
 static struct rule_dpif *rule_dpif_cast(const struct rule *);
 
