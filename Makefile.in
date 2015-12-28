@@ -288,7 +288,7 @@ am__lib_libopenvswitch_a_SOURCES_DIST = lib/aes128.c lib/aes128.h \
 	lib/fatal-signal.c lib/fatal-signal.h lib/flow.c lib/flow.h \
 	lib/guarded-list.c lib/guarded-list.h lib/hash.c lib/hash.h \
 	lib/hindex.c lib/hindex.h lib/hmap.c lib/hmap.h lib/hmapx.c \
-	lib/hmapx.h lib/increment_cookie.c lib/increment_cookie.h \
+	lib/hmapx.h lib/increment_table_id.c lib/increment_table_id.h \
 	lib/jhash.c lib/jhash.h lib/json.c lib/json.h lib/jsonrpc.c \
 	lib/jsonrpc.h lib/lacp.c lib/lacp.h lib/latch.c lib/latch.h \
 	lib/learn.c lib/learn.h lib/learn_delete.c lib/learn_delete.h \
@@ -371,7 +371,7 @@ am_lib_libopenvswitch_a_OBJECTS = lib/aes128.$(OBJEXT) \
 	lib/fatal-signal.$(OBJEXT) lib/flow.$(OBJEXT) \
 	lib/guarded-list.$(OBJEXT) lib/hash.$(OBJEXT) \
 	lib/hindex.$(OBJEXT) lib/hmap.$(OBJEXT) lib/hmapx.$(OBJEXT) \
-	lib/increment_cookie.$(OBJEXT) lib/jhash.$(OBJEXT) \
+	lib/increment_table_id.$(OBJEXT) lib/jhash.$(OBJEXT) \
 	lib/json.$(OBJEXT) lib/jsonrpc.$(OBJEXT) lib/lacp.$(OBJEXT) \
 	lib/latch.$(OBJEXT) lib/learn.$(OBJEXT) \
 	lib/learn_delete.$(OBJEXT) lib/learn_learn.$(OBJEXT) \
@@ -1480,7 +1480,7 @@ lib_libopenvswitch_a_SOURCES = lib/aes128.c lib/aes128.h \
 	lib/fatal-signal.c lib/fatal-signal.h lib/flow.c lib/flow.h \
 	lib/guarded-list.c lib/guarded-list.h lib/hash.c lib/hash.h \
 	lib/hindex.c lib/hindex.h lib/hmap.c lib/hmap.h lib/hmapx.c \
-	lib/hmapx.h lib/increment_cookie.c lib/increment_cookie.h \
+	lib/hmapx.h lib/increment_table_id.c lib/increment_table_id.h \
 	lib/jhash.c lib/jhash.h lib/json.c lib/json.h lib/jsonrpc.c \
 	lib/jsonrpc.h lib/lacp.c lib/lacp.h lib/latch.c lib/latch.h \
 	lib/learn.c lib/learn.h lib/learn_delete.c lib/learn_delete.h \
@@ -2074,7 +2074,7 @@ lib/hindex.$(OBJEXT): lib/$(am__dirstamp) \
 	lib/$(DEPDIR)/$(am__dirstamp)
 lib/hmap.$(OBJEXT): lib/$(am__dirstamp) lib/$(DEPDIR)/$(am__dirstamp)
 lib/hmapx.$(OBJEXT): lib/$(am__dirstamp) lib/$(DEPDIR)/$(am__dirstamp)
-lib/increment_cookie.$(OBJEXT): lib/$(am__dirstamp) \
+lib/increment_table_id.$(OBJEXT): lib/$(am__dirstamp) \
 	lib/$(DEPDIR)/$(am__dirstamp)
 lib/jhash.$(OBJEXT): lib/$(am__dirstamp) lib/$(DEPDIR)/$(am__dirstamp)
 lib/json.$(OBJEXT): lib/$(am__dirstamp) lib/$(DEPDIR)/$(am__dirstamp)
@@ -2977,7 +2977,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/hindex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/hmap.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/hmapx.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/increment_cookie.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/increment_table_id.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/jhash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/json.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/jsonrpc.Po@am__quote@
