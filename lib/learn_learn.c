@@ -1149,7 +1149,7 @@ learn_learn_format(const struct ofpact_learn_learn *learn, struct ds *s)
     }
 
     ds_put_format(s, ",learn_on_timeout=%"PRIu8, learn->learn_on_timeout);
-    ds_put_format(s, ",use_atomic_cookie=%"PRIu8, learn->table_spec);
+    ds_put_format(s, ",use_atomic_table=%"PRIu8, learn->table_spec);
     
     spec = (const struct ofpact_learn_spec *) learn->data;
     spec_end = spec + learn->n_specs;

@@ -697,6 +697,12 @@ learn_delete_format(const struct ofpact_learn_delete *learn, struct ds *s)
         ds_put_format(s, ",cookie=%#"PRIx64, learn->cookie);
     }
 
+    if (learn->table_spec == DELETE_USING_ATOMIC_TABLE) {
+        ds_put_cstr(s, ",table_spec=DELETE_USING_ATOMIC_TABLE");
+    } else if (learn->table_spec == DELETE_USING_RULE_TABLE) {
+        ds_put_cstr(s, ",table_spec=DELETE_USING_RULE_TABLE");
+    }
+
     for (spec = learn->specs; spec < &learn->specs[learn->n_specs]; spec++) {
         ds_put_char(s, ',');
 
