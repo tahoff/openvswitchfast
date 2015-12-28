@@ -447,7 +447,7 @@ void timeout_act_execute(const struct ofpact_timeout_act *, struct flow *,
 void learn_delete_execute(const struct ofpact_learn_delete *learn,
         const struct flow *flow,
         struct ofputil_flow_mod *fm, struct ofpbuf *ofpacts,
-        uint64_t atomic_cookie, struct rule *rule);
+        uint8_t atomic_table_id, struct rule *rule);
 
 #ifdef  __cplusplus
 }

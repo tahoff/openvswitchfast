@@ -4878,9 +4878,6 @@ rule_get_stats(struct rule *rule_, uint64_t *packets, uint64_t *bytes)
     ovs_mutex_unlock(&rule->stats_mutex);
 }
 
-// TODO If we want a generalized timeout action, then we will need to 
-// update this portion 
-
 static void
 rule_dpif_execute(struct rule_dpif *rule, const struct flow *flow,
                   struct ofpbuf *packet)

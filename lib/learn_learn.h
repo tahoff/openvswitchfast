@@ -26,7 +26,7 @@ void learn_learn_to_nxast(const struct ofpact_learn_learn *,
 
 void learn_learn_execute(const struct ofpact_learn_learn *, const struct flow *,
                          struct ofputil_flow_mod *, struct ofpbuf *ofpacts,
-                         uint64_t cookie_count);
+                         uint8_t atomic_table_id);
 void learn_learn_mask(const struct ofpact_learn_learn *, struct flow_wildcards *);
 
 char *learn_learn_parse(char *, struct ofpbuf *ofpacts) WARN_UNUSED_RESULT;

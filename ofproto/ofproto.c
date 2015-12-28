@@ -30,7 +30,7 @@
 #include "dynamic-string.h"
 #include "hash.h"
 #include "hmap.h"
-#include "increment_cookie.h"
+#include "increment_table_id.h"
 #include "learn.h"
 #include "learn_delete.h"
 #include "learn_learn.h"
@@ -4403,31 +4403,26 @@ ofproto_rule_expire(struct rule *rule, uint8_t reason)
 void learn_delete_execute(const struct ofpact_learn_delete *learn,
         const struct flow *flow,
         struct ofputil_flow_mod *fm, struct ofpbuf *ofpacts,
-        uint64_t atomic_cookie, struct rule *rule) {
+        uint8_t atomic_table, struct rule *rule) {
     
     const struct ofpact_learn_spec *spec;
     struct ofpact_resubmit *resubmit;
 
     match_init_catchall(&fm->match);
     fm->priority = learn->priority;
-    if (learn->cookie_spec == DELETE_USING_ATOMIC_COOKIE) {
-        fm->cookie = atomic_cookie;
-        fm->cookie_mask = atomic_cookie;
-        fm->new_cookie = atomic_cookie;
-    } else if (learn->cookie_spec == DELETE_USING_RULE_COOKIE && rule) {
-        fm->cookie = ntohll(rule->flow_cookie);
-        fm->cookie_mask = ntohll(rule->flow_cookie);
-        fm->new_cookie = ntohll(rule->flow_cookie);
+    fm->cookie = htonll(learn->cookie);
+    fm->cookie_mask = htonll(learn->cookie);
+    fm->new_cookie = htonll(learn->cookie);
+    
+    if (learn->table_spec == DELETE_USING_ATOMIC_TABLE) {
+        fm->table_id = atomic_table;
+    } else if (learn->table_spec == DELETE_USING_RULE_TABLE && rule) {
+        fm->table_id = rule->table_id;
     } else {
-        //fm->cookie = htonll(0);
-        //fm->cookie_mask = htonll(0);
-        fm->cookie = htonll(learn->cookie);
-        fm->cookie_mask = htonll(learn->cookie);
-        fm->new_cookie = htonll(learn->cookie);
+        fm->table_id = learn->table_id;
     }
 
     fm->modify_cookie = fm->new_cookie != htonll(UINT64_MAX);
-    fm->table_id = learn->table_id;
     fm->command = OFPFC_DELETE;
     fm->buffer_id = UINT32_MAX;
     fm->out_port = OFPP_NONE;
@@ -4507,8 +4502,8 @@ void timeout_act_execute(const struct ofpact_timeout_act *act,
     struct ofpact *a;
     struct ofputil_flow_mod fm;
     struct flow_wildcards wc;
-    uint64_t atomic_cookie;
-    atomic_cookie = get_cookie_val();
+    uint8_t atomic_table_id;
+    atomic_table_id = get_table_val();
 
     wc.masks = *flow;
 
@@ -4566,15 +4561,15 @@ void timeout_act_execute(const struct ofpact_timeout_act *act,
                     // Populate fm with the learn attributes
                     //ovs_mutex_unlock(&ofproto_mutex);
                     learn_delete_execute(ofpact_get_LEARN_DELETE(a), flow,
-                         &fm, &ofpacts_buf, atomic_cookie, rule);
+                         &fm, &ofpacts_buf, atomic_table_id, rule);
 
                     // ofproto_flow_mod(struct ofproto *ofproto, struct ofputil_flow_mod *fm)
                     ofproto_flow_mod(ofproto, &fm);
                     ofpbuf_uninit(&ofpacts_buf); 
                     break;
-                case OFPACT_INCREMENT_COOKIE:
-                    atomic_cookie = increment_cookie_execute(
-                        ofpact_get_INCREMENT_COOKIE(a), flow);
+                case OFPACT_INCREMENT_TABLE_ID:
+                    atomic_table_id = increment_table_id_execute(
+                        ofpact_get_INCREMENT_TABLE_ID(a), flow);
                     break;
                 case OFPACT_LEARN_LEARN:
                     ofpbuf_use_stub(&ofpacts_buf, ofpacts_stub, sizeof ofpacts_stub);
@@ -4587,7 +4582,7 @@ void timeout_act_execute(const struct ofpact_timeout_act *act,
                     // Populate fm with the learn attributes
                     //ovs_mutex_unlock(&ofproto_mutex);
                     learn_learn_execute(ofpact_get_LEARN_LEARN(a), flow, &fm,
-                                        &ofpacts_buf, atomic_cookie);
+                                        &ofpacts_buf, atomic_table_id);
                     
                     // ofproto_flow_mod(struct ofproto *ofproto, struct ofputil_flow_mod *fm)
                     ofproto_flow_mod(ofproto, &fm);

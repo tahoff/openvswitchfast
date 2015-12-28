@@ -28,7 +28,7 @@
 #include "coverage.h"
 #include "dpif.h"
 #include "dynamic-string.h"
-#include "increment_cookie.h"
+#include "increment_table_id.h"
 #include "in-band.h"
 #include "lacp.h"
 #include "learn.h"
@@ -2120,14 +2120,13 @@ xlate_learn_action(struct xlate_ctx *ctx,
 static void
 xlate_learn_learn_action(struct xlate_ctx *ctx,
                          const struct ofpact_learn_learn *learn,
-                         uint64_t cookie_count)
+                         uint8_t atomic_table_id)
 {
     uint64_t ofpacts_stub[1024 / 8];
     struct ofputil_flow_mod fm;
     struct ofpbuf ofpacts;
 
     ctx->xout->has_learn = true;
-
     learn_learn_mask(learn, &ctx->xout->wc);
 
     if (!ctx->xin->may_learn) {
@@ -2135,15 +2134,16 @@ xlate_learn_learn_action(struct xlate_ctx *ctx,
     }
 
     ofpbuf_use_stub(&ofpacts, ofpacts_stub, sizeof ofpacts_stub);
-    learn_learn_execute(learn, &ctx->xin->flow, &fm, &ofpacts, cookie_count);
+    learn_learn_execute(learn, &ctx->xin->flow, &fm, &ofpacts, atomic_table_id);
     ofproto_dpif_flow_mod(ctx->xbridge->ofproto, &fm);
     ofpbuf_uninit(&ofpacts);
 }
 
 static uint64_t
-xlate_increment_cookie_action(struct xlate_ctx *ctx,
-                              const struct ofpact_increment_cookie *incr_cookie) {
-    return increment_cookie_execute(incr_cookie, &ctx->xin->flow);
+xlate_increment_table_id_action(
+  struct xlate_ctx *ctx,
+  const struct ofpact_increment_table_id *incr_table_id) {
+    return increment_table_id_execute(incr_table_id, &ctx->xin->flow);
 }
 
 static void
@@ -2232,7 +2232,7 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
     struct flow_wildcards *wc = &ctx->xout->wc;
     struct flow *flow = &ctx->xin->flow;
     const struct ofpact *a;
-    uint64_t cookie_count = get_cookie_val();
+    uint8_t atomic_table_id = get_table_val();
 
     OFPACT_FOR_EACH (a, ofpacts, ofpacts_len) {
         struct ofpact_controller *controller;
@@ -2417,17 +2417,17 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
             break;
 
         case OFPACT_LEARN_LEARN:
-            xlate_learn_learn_action(ctx, ofpact_get_LEARN_LEARN(a), cookie_count);
+            xlate_learn_learn_action(ctx, ofpact_get_LEARN_LEARN(a), atomic_table_id);
             break;
  
         case OFPACT_LEARN_DELETE:
             xlate_learn_delete_action(ctx, ofpact_get_LEARN_DELETE(a),
-                cookie_count, ctx->xin->rule);
+                atomic_table_id, ctx->xin->rule);
             break;
         
-        case OFPACT_INCREMENT_COOKIE:
-            cookie_count =
-                xlate_increment_cookie_action(ctx, ofpact_get_INCREMENT_COOKIE(a));
+        case OFPACT_INCREMENT_TABLE_ID:
+            atomic_table_id =
+                xlate_increment_table_id_action(ctx, ofpact_get_INCREMENT_TABLE_ID(a));
             break;
  
         case OFPACT_TIMEOUT_ACT:

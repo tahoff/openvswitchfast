@@ -68,8 +68,8 @@ lib_libopenvswitch_a_SOURCES = \
 	lib/hmap.h \
 	lib/hmapx.c \
 	lib/hmapx.h \
-	lib/increment_cookie.c \
-    lib/increment_cookie.h \
+	lib/increment_table_id.c \
+    lib/increment_table_id.h \
     lib/jhash.c \
 	lib/jhash.h \
 	lib/json.c \

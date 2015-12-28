@@ -33,8 +33,8 @@ struct nx_action_learn_delete;
  * See include/openflow/nicira-ext.h for NXAST_DELETE_LEARN specification.
  */
 
-#define DELETE_USING_ATOMIC_COOKIE  1
-#define DELETE_USING_RULE_COOKIE  2
+#define DELETE_USING_ATOMIC_TABLE  1
+#define DELETE_USING_RULE_TABLE  2
 
 enum ofperr learn_delete_from_openflow(const struct nx_action_learn_delete *,
                                        struct ofpbuf *ofpacts);

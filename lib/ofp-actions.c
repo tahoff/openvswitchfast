@@ -20,7 +20,7 @@
 #include "byte-order.h"
 #include "compiler.h"
 #include "dynamic-string.h"
-#include "increment_cookie.h"
+#include "increment_table_id.h"
 #include "learn.h"
 #include "learn_learn.h"
 #include "learn_delete.h"
@@ -421,9 +421,9 @@ ofpact_from_nxast(const union ofp_action *a, enum ofputil_action_code code,
             ALIGNED_CAST(const struct nx_action_learn_delete *, a), out);
         break;
 
-    case OFPUTIL_NXAST_INCREMENT_COOKIE:
-        error = increment_cookie_from_openflow(
-            ALIGNED_CAST(const struct nx_action_increment_cookie *, a), out);
+    case OFPUTIL_NXAST_INCREMENT_TABLE_ID:
+        error = increment_table_id_from_openflow(
+            ALIGNED_CAST(const struct nx_action_increment_table_id *, a), out);
         break;
 
     case OFPUTIL_NXAST_TIMEOUT_ACT:
@@ -1007,7 +1007,7 @@ ovs_instruction_type_from_ofpact_type(enum ofpact_type type)
     case OFPACT_LEARN:
     case OFPACT_LEARN_LEARN:
     case OFPACT_LEARN_DELETE:
-    case OFPACT_INCREMENT_COOKIE:
+    case OFPACT_INCREMENT_TABLE_ID:
     case OFPACT_TIMEOUT_ACT:
     case OFPACT_MULTIPATH:
     case OFPACT_NOTE:
@@ -1309,8 +1309,8 @@ ofpact_check__(const struct ofpact *a, struct flow *flow, ofp_port_t max_ports,
     case OFPACT_LEARN_DELETE:
         return learn_delete_check(ofpact_get_LEARN_DELETE(a), flow);
 
-    case OFPACT_INCREMENT_COOKIE:
-        return increment_cookie_check(ofpact_get_INCREMENT_COOKIE(a), flow);
+    case OFPACT_INCREMENT_TABLE_ID:
+        return increment_table_id_check(ofpact_get_INCREMENT_TABLE_ID(a), flow);
 
     case OFPACT_TIMEOUT_ACT:
         return timeout_act_check(ofpact_get_TIMEOUT_ACT(a), flow);
@@ -1636,8 +1636,8 @@ ofpact_to_nxast(const struct ofpact *a, struct ofpbuf *out)
         learn_delete_to_nxast(ofpact_get_LEARN_DELETE(a), out);
         break;
 
-    case OFPACT_INCREMENT_COOKIE:
-        increment_cookie_to_nxast(ofpact_get_INCREMENT_COOKIE(a), out);
+    case OFPACT_INCREMENT_TABLE_ID:
+        increment_table_id_to_nxast(ofpact_get_INCREMENT_TABLE_ID(a), out);
         break;
 
     case OFPACT_TIMEOUT_ACT:
@@ -1800,7 +1800,7 @@ ofpact_to_openflow10(const struct ofpact *a, struct ofpbuf *out)
     case OFPACT_RESUBMIT:
     case OFPACT_LEARN:
     case OFPACT_LEARN_LEARN:
-    case OFPACT_INCREMENT_COOKIE:
+    case OFPACT_INCREMENT_TABLE_ID:
     case OFPACT_LEARN_DELETE:
     case OFPACT_TIMEOUT_ACT:
     case OFPACT_MULTIPATH:
@@ -1972,7 +1972,7 @@ ofpact_to_openflow11(const struct ofpact *a, struct ofpbuf *out)
     case OFPACT_LEARN:
     case OFPACT_LEARN_LEARN:
     case OFPACT_LEARN_DELETE:
-    case OFPACT_INCREMENT_COOKIE:
+    case OFPACT_INCREMENT_TABLE_ID:
     case OFPACT_TIMEOUT_ACT:
     case OFPACT_MULTIPATH:
     case OFPACT_NOTE:
@@ -2124,7 +2124,7 @@ ofpact_outputs_to_port(const struct ofpact *ofpact, ofp_port_t port)
     case OFPACT_LEARN:
     case OFPACT_LEARN_LEARN:
     case OFPACT_LEARN_DELETE:
-    case OFPACT_INCREMENT_COOKIE:
+    case OFPACT_INCREMENT_TABLE_ID:
     case OFPACT_TIMEOUT_ACT:
     case OFPACT_MULTIPATH:
     case OFPACT_NOTE:
@@ -2442,8 +2442,8 @@ ofpact_format(const struct ofpact *a, struct ds *s)
         learn_delete_format(ofpact_get_LEARN_DELETE(a), s);
         break;
 
-    case OFPACT_INCREMENT_COOKIE:
-        increment_cookie_format(ofpact_get_INCREMENT_COOKIE(a), s);
+    case OFPACT_INCREMENT_TABLE_ID:
+        increment_table_id_format(ofpact_get_INCREMENT_TABLE_ID(a), s);
         break;
 
     case OFPACT_TIMEOUT_ACT:
