@@ -2478,6 +2478,17 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
             break;
         }
     }
+
+    atomic_table_id = get_table_val();
+    // ctx->rule_dpif->up.table_id
+    if (ctx->table_id == atomic_table_id) {
+        // resubmit to 201
+        xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port, 201, false);
+    } else {
+        // resubmit to table_id + 1
+        xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
+            ctx->table_id + 1, false);
+    }
 }
 
 void
