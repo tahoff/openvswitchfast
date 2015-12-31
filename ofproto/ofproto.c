@@ -4510,8 +4510,11 @@ void timeout_act_execute(const struct ofpact_timeout_act *act,
     ofproto = rule->ofproto;
 
     struct ofpbuf ofpacts_buf;
+    struct ofpbuf stack;
     uint64_t ofpacts_stub[1024 / 8];
+    uint64_t stack_stub[1024 / 8];
     ofpbuf_use_stub(&ofpacts_buf, ofpacts_stub, sizeof ofpacts_stub);
+    ofpbuf_use_stub(&stack, stack_stub, sizeof stack_stub);
 
     fprintf(stderr," timeout_act_execute: act->ofpacts=%p act->ofpacts_len=%u\n",
             act->ofpacts, act->ofpacts_len);
@@ -4591,24 +4594,50 @@ void timeout_act_execute(const struct ofpact_timeout_act *act,
                     break;
 
                 case OFPACT_CONTROLLER:
+                    // Do nothing, because there's no packet to send to
+                    // the controller
                 case OFPACT_OUTPUT:
+                    // No packet to output
                 case OFPACT_ENQUEUE:
                 case OFPACT_OUTPUT_REG:
+                    // Nothing to output
                 case OFPACT_BUNDLE:
+                    // No packet to bundle on
                 case OFPACT_SET_VLAN_VID:
+                    // No packet
                 case OFPACT_SET_VLAN_PCP:
+                    // No packet
                 case OFPACT_STRIP_VLAN:
+                    // No packet
                 case OFPACT_PUSH_VLAN:
+                    // No packet
                 case OFPACT_SET_ETH_SRC:
+                    // No packet
                 case OFPACT_SET_ETH_DST:
+                    // No packet
                 case OFPACT_SET_IPV4_SRC:
+                    // No packet
                 case OFPACT_SET_IPV4_DST:
+                    // No packet
                 case OFPACT_SET_IPV4_DSCP:
+                    // No packet
                 case OFPACT_SET_L4_SRC_PORT:
+                    // No packet
                 case OFPACT_SET_L4_DST_PORT:
+                    // No packet
+                    break;
                 case OFPACT_REG_MOVE:
+                    nxm_execute_reg_move(ofpact_get_REG_MOVE(a), 
+                        flow, &wc);
+                    break;    
                 case OFPACT_STACK_PUSH:
+                    nxm_execute_stack_push(ofpact_get_STACK_PUSH(a),
+                        flow, &wc, &stack); 
+                    break;
                 case OFPACT_STACK_POP:
+                    nxm_execute_stack_pop(ofpact_get_STACK_POP(a),
+                        flow, &wc, &stack);
+                    break;
                 case OFPACT_DEC_TTL:
                 case OFPACT_SET_MPLS_TTL:
                 case OFPACT_DEC_MPLS_TTL:
@@ -4631,11 +4660,7 @@ void timeout_act_execute(const struct ofpact_timeout_act *act,
             }
         }
     }
-
 }
-
-
-
 
 /* Reduces '*timeout' to no more than 'max'.  A value of zero in either case
  * means "infinite". */
