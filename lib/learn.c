@@ -144,15 +144,20 @@ learn_from_openflow(const struct nx_action_learn *nal, struct ofpbuf *ofpacts)
     fprintf(stderr, "......\n");
     
     for (p = nal + 1; p != end; ) {
-        struct ofpact_learn_spec *spec;
-        uint16_t header = ntohs(get_be16(&p));
-
-        if (!header) {
+        if ((char *) end - (char *) p == 0) {
             break;
         }
 
+        struct ofpact_learn_spec *spec;
+        uint16_t header = ntohs(get_be16(&p));
         uint8_t deferal_count = get_u8(&p);
-
+        
+        if (!header) {
+            break;
+        } else if ((char *) end - (char *) p <= 0) {
+            break;
+        }
+      
         spec = ofpbuf_put_zeros(ofpacts, sizeof *spec);
         learn = ofpacts->l2;
         learn->n_specs++;
@@ -204,6 +209,9 @@ learn_from_openflow(const struct nx_action_learn *nal, struct ofpbuf *ofpacts)
     }
     fprintf(stderr, "......\n"); 
 
+    if ((char *) end - (char *) p <= 0) {
+        return 0;
+    }
     if (!is_all_zeros(p, (char *) end - (char *) p)) {
         return OFPERR_OFPBAC_BAD_ARGUMENT;
     }
@@ -812,6 +820,7 @@ learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
             learn->n_specs++;
 
             error = learn_parse_spec(orig, name, value, spec);
+            spec->defer_count = 0;
             if (error) {
                 return error;
             }
