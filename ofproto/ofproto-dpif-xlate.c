@@ -57,7 +57,7 @@ VLOG_DEFINE_THIS_MODULE(ofproto_dpif_xlate);
 
 /* Maximum depth of flow table recursion (due to resubmit actions) in a
  * flow translation. */
-#define MAX_RESUBMIT_RECURSION 64
+#define MAX_RESUBMIT_RECURSION 256
 
 struct ovs_rwlock xlate_rwlock = OVS_RWLOCK_INITIALIZER;
 
