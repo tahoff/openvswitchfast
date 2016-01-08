@@ -4711,7 +4711,7 @@ rule_dpif_lookup(struct ofproto_dpif *ofproto, const struct flow *flow,
 {
     struct ofport_dpif *port;
 
-    if (rule_dpif_lookup_in_table(ofproto, flow, wc, 0, rule)) {
+    if (rule_dpif_lookup_in_table(ofproto, flow, wc, 201, rule)) {
         return;
     }
     port = get_ofp_port(ofproto, flow->in_port.ofp_port);
