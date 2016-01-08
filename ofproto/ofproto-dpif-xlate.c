@@ -1712,8 +1712,9 @@ xlate_table_action(struct xlate_ctx *ctx,
         if (ctx->xin->resubmit_hook) {
             ctx->xin->resubmit_hook(ctx->xin, rule, ctx->recurse);
         }
-
-        if (!rule && may_packet_in) {
+        
+        if (!rule && may_packet_in && table_id > 200) {
+            fprintf(stderr, "xlate_table_action 3\n");
             struct xport *xport;
 
             /* XXX
@@ -1729,16 +1730,19 @@ xlate_table_action(struct xlate_ctx *ctx,
         
         }
         
-        // Perform resumbit through atomic tables
-        if (!rule && table_id < get_table_val() && table_id <= 200) {
-            xlate_table_action(ctx, in_port, table_id + 1, may_packet_in);
-        } else if (!rule && table_id == get_table_val()) {
-            xlate_table_action(ctx, in_port, 201, may_packet_in);
-        }
-        
         if (rule) {
             xlate_recursively(ctx, rule);
             rule_dpif_unref(rule);
+        }
+
+        // Perform resumbit through atomic tables
+        fprintf(stderr, "xlate_table_action \n");
+        if (table_id < get_table_val() && table_id <= 200) {
+            fprintf(stderr, "xlate_table_action 1\n");
+            xlate_table_action(ctx, in_port, table_id + 1, may_packet_in);
+        } else if (table_id == get_table_val()) {
+            fprintf(stderr, "xlate_table_action 2\n");
+            xlate_table_action(ctx, in_port, 201, may_packet_in);
         }
 
         ctx->table_id = old_table_id;
@@ -2487,17 +2491,19 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
             break;
         }
     }
-
     atomic_table_id = get_table_val();
     // ctx->rule_dpif->up.table_id
-    if (ctx->table_id == atomic_table_id) {
+    /*if (ctx->table_id == atomic_table_id) {
         // resubmit to 201
+        ctx->table_id = 201;
+        fprintf(stderr, "do_xlate_action resubmit to 201\n");
         xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port, 201, false);
-    } else {
+    } else if (ctx->table_id <= 200) {
         // resubmit to table_id + 1
+        ctx->table_id = ctx->table_id + 1;
         xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
             ctx->table_id + 1, false);
-    }
+    }*/
 }
 
 void
