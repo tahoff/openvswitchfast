@@ -1698,7 +1698,9 @@ xlate_table_action(struct xlate_ctx *ctx,
         ofp_port_t old_in_port = ctx->xin->flow.in_port.ofp_port;
         uint8_t old_table_id = ctx->table_id;
 
+        fprintf(stderr, "----- xlate_table_action %u %u ", ctx->table_id, table_id);
         ctx->table_id = table_id;
+        fprintf(stderr, "%u-----\n", ctx->table_id);
 
         /* Look up a flow with 'in_port' as the input port.  Then restore the
          * original input port (otherwise OFPP_NORMAL and OFPP_IN_PORT will
@@ -1739,9 +1741,11 @@ xlate_table_action(struct xlate_ctx *ctx,
         fprintf(stderr, "xlate_table_action \n");
         if (table_id < get_table_val() && table_id <= 200) {
             fprintf(stderr, "xlate_table_action 1\n");
+            ctx->table_id = table_id + 1;
             xlate_table_action(ctx, in_port, table_id + 1, may_packet_in);
-        } else if (table_id == get_table_val()) {
+        } else if (table_id >= get_table_val() && table_id <= 200) {
             fprintf(stderr, "xlate_table_action 2\n");
+            ctx->table_id = 201;
             xlate_table_action(ctx, in_port, 201, may_packet_in);
         }
 
@@ -1758,6 +1762,7 @@ static void
 xlate_ofpact_resubmit(struct xlate_ctx *ctx,
                       const struct ofpact_resubmit *resubmit)
 {
+    fprintf(stderr, "xlate_ofpact_resumbit\n");
     ofp_port_t in_port;
     uint8_t table_id;
 
@@ -1802,6 +1807,8 @@ execute_controller_action(struct xlate_ctx *ctx, int len,
     struct ofputil_packet_in *pin;
     struct ofpbuf *packet;
     struct flow key;
+
+    fprintf(stderr, "EXECUTE_CONTROLLER_ACTION %u\n", ctx->table_id);
 
     ovs_assert(!ctx->xout->slow || ctx->xout->slow == SLOW_CONTROLLER);
     ctx->xout->slow = SLOW_CONTROLLER;
@@ -2247,6 +2254,8 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
     const struct ofpact *a;
     uint8_t atomic_table_id = get_table_val();
 
+    fprintf(stderr, "do_xlate_actions %u\n", ctx->table_id);
+
     OFPACT_FOR_EACH (a, ofpacts, ofpacts_len) {
         struct ofpact_controller *controller;
         const struct ofpact_metadata *metadata;
@@ -2493,14 +2502,14 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
     }
     atomic_table_id = get_table_val();
     // ctx->rule_dpif->up.table_id
-    /*if (ctx->table_id == atomic_table_id) {
+    /*if (ctx->table_id >= atomic_table_id && ctx->table_id <= 200) {
         // resubmit to 201
-        ctx->table_id = 201;
+        //ctx->table_id = 201;
         fprintf(stderr, "do_xlate_action resubmit to 201\n");
         xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port, 201, false);
     } else if (ctx->table_id <= 200) {
         // resubmit to table_id + 1
-        ctx->table_id = ctx->table_id + 1;
+        //ctx->table_id = ctx->table_id + 1;
         xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
             ctx->table_id + 1, false);
     }*/
