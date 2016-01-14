@@ -38,6 +38,7 @@ struct cls_rule;
 struct netdev;
 struct ofpact_timeout_act;
 struct ofpact_learn_delete;
+struct ofpact_learn_learn;
 struct ofpbuf;
 struct ofproto;
 struct ofport;
@@ -447,6 +448,9 @@ void timeout_act_execute(const struct ofpact_timeout_act *, struct flow *,
 void learn_delete_execute(const struct ofpact_learn_delete *learn,
         const struct flow *flow,
         struct ofputil_flow_mod *fm, struct ofpbuf *ofpacts,
+        uint8_t atomic_table_id, struct rule *rule);
+void learn_learn_execute(const struct ofpact_learn_learn *, const struct flow *,
+        struct ofputil_flow_mod *, struct ofpbuf *ofpacts,
         uint8_t atomic_table_id, struct rule *rule);
 
 #ifdef  __cplusplus

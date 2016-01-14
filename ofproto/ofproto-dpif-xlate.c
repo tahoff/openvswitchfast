@@ -2140,7 +2140,8 @@ xlate_learn_action(struct xlate_ctx *ctx,
 static void
 xlate_learn_learn_action(struct xlate_ctx *ctx,
                          const struct ofpact_learn_learn *learn,
-                         uint8_t atomic_table_id)
+                         uint8_t atomic_table_id,
+                         struct rule_dpif *rule)
 {
     uint64_t ofpacts_stub[1024 / 8];
     struct ofputil_flow_mod fm;
@@ -2154,7 +2155,8 @@ xlate_learn_learn_action(struct xlate_ctx *ctx,
     }
 
     ofpbuf_use_stub(&ofpacts, ofpacts_stub, sizeof ofpacts_stub);
-    learn_learn_execute(learn, &ctx->xin->flow, &fm, &ofpacts, atomic_table_id);
+    learn_learn_execute(learn, &ctx->xin->flow, &fm, &ofpacts,
+        atomic_table_id, rule ? &rule->up : NULL);
     ofproto_dpif_flow_mod(ctx->xbridge->ofproto, &fm);
     ofpbuf_uninit(&ofpacts);
 }
@@ -2254,7 +2256,9 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
     const struct ofpact *a;
     uint8_t atomic_table_id = get_table_val();
 
-    fprintf(stderr, "do_xlate_actions %u\n", ctx->table_id);
+    fprintf(stderr, "do_xlate_actions %u %u %i\n",
+        ctx->table_id, ctx->xin->flow.in_port,
+        ctx->xin->resubmit_stats ? ctx->xin->resubmit_stats->used : 0);
 
     OFPACT_FOR_EACH (a, ofpacts, ofpacts_len) {
         struct ofpact_controller *controller;
@@ -2439,7 +2443,8 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
             break;
 
         case OFPACT_LEARN_LEARN:
-            xlate_learn_learn_action(ctx, ofpact_get_LEARN_LEARN(a), atomic_table_id);
+            xlate_learn_learn_action(ctx, ofpact_get_LEARN_LEARN(a),
+                atomic_table_id, ctx->xin->rule);
             break;
  
         case OFPACT_LEARN_DELETE:
@@ -2508,6 +2513,18 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
         fprintf(stderr, "do_xlate_action resubmit to 201\n");
         xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port, 201, false);
     } else if (ctx->table_id <= 200) {
+        // resubmit to table_id + 1
+        //ctx->table_id = ctx->table_id + 1;
+        xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
+            ctx->table_id + 1, false);
+    }*/
+    /*if (ctx->table_id > 0 && ctx->table_id <= 200) {
+        struct ofpact_resubmit resub;
+        resub.in_port = ctx->xin->flow.in_port.ofp_port;
+        resub.table_id = ctx->table_id >= atomic_table_id ? 201 : ctx->table_id + 1;
+        xlate_ofpact_resubmit(ctx, &resub); 
+    }*/
+    /*if (ctx->table_id == 0) {
         // resubmit to table_id + 1
         //ctx->table_id = ctx->table_id + 1;
         xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,

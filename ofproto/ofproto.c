@@ -4491,6 +4491,133 @@ void learn_delete_execute(const struct ofpact_learn_delete *learn,
     fm->ofpacts_len = ofpacts->size;
 }
 
+/* Composes 'fm' so that executing it will implement 'learn' given that the
+ * packet being processed has 'flow' as its flow.
+ *
+ * Uses 'ofpacts' to store the flow mod's actions.  The caller must initialize
+ * 'ofpacts' and retains ownership of it.  'fm->ofpacts' will point into the
+ * 'ofpacts' buffer.
+ *
+ * The caller has to actually execute 'fm'. */
+void
+learn_learn_execute(const struct ofpact_learn_learn *learn,
+        const struct flow *flow, struct ofputil_flow_mod *fm,
+        struct ofpbuf *ofpacts,
+        uint8_t atomic_table, struct rule *rule)
+{
+    fprintf(stderr, "learn_learn_execute\n");
+    //if (learn->learn_on_timeout) {
+    //    return;
+    //}
+
+    const struct ofpact_learn_spec *spec;
+    const struct ofpact_learn_spec *end;
+    struct ofpact_resubmit *resubmit;
+
+    spec = (const struct ofpact_learn_spec *) learn->data;
+    end = &spec[learn->n_specs];
+
+    match_init_catchall(&fm->match);
+    fm->priority = learn->priority;
+    fm->cookie = htonll(0);
+    fm->cookie_mask = htonll(0);
+    fm->new_cookie = htonll(learn->cookie);
+
+    if (learn->table_spec == LEARN_USING_ATOMIC_TABLE) {
+        fm->table_id = atomic_table;
+    } else if (learn->table_spec == LEARN_USING_RULE_TABLE && rule) {
+        fm->table_id = rule->table_id;
+    } else {
+        fm->table_id = learn->table_id;
+    }
+
+    fm->modify_cookie = fm->new_cookie != htonll(UINT64_MAX);
+    fm->command = OFPFC_MODIFY_STRICT;
+    fm->idle_timeout = learn->idle_timeout;
+    fm->hard_timeout = learn->hard_timeout;
+    fm->buffer_id = UINT32_MAX;
+    fm->out_port = OFPP_NONE;
+    fm->flags = learn->flags;
+    fm->ofpacts = NULL;
+    fm->ofpacts_len = 0;
+
+    if (learn->fin_idle_timeout || learn->fin_hard_timeout) {
+        struct ofpact_fin_timeout *oft;
+
+        oft = ofpact_put_FIN_TIMEOUT(ofpacts);
+        oft->fin_idle_timeout = learn->fin_idle_timeout;
+        oft->fin_hard_timeout = learn->fin_hard_timeout;
+    }
+
+    for (spec = (const struct ofpact_learn_spec *) learn->data; spec < end; spec++) {
+        union mf_subvalue value;
+        int chunk, ofs;
+
+        if (spec->src_type == NX_LEARN_SRC_FIELD) {
+            mf_read_subfield(&spec->src, flow, &value);
+        } else {
+            value = spec->src_imm;
+        }
+
+        switch (spec->dst_type) {
+            case NX_LEARN_DST_MATCH:
+                mf_write_subfield(&spec->dst, &value, &fm->match);
+                break;
+
+            case NX_LEARN_DST_LOAD:
+                for (ofs = 0; ofs < spec->n_bits; ofs += chunk) {
+                    struct ofpact_reg_load *load;
+
+                    chunk = MIN(spec->n_bits - ofs, 64);
+
+                    load = ofpact_put_REG_LOAD(ofpacts);
+                    load->dst.field = spec->dst.field;
+                    load->dst.ofs = spec->dst.ofs + ofs;
+                    load->dst.n_bits = chunk;
+                    bitwise_copy(&value, sizeof value, ofs,
+                            &load->subvalue, sizeof load->subvalue, 0,
+                            chunk);
+                }
+                break;
+
+            case NX_LEARN_DST_OUTPUT:
+                if (spec->n_bits <= 16
+                        || is_all_zeros(value.u8, sizeof value - 2)) {
+                    ofp_port_t port = u16_to_ofp(ntohs(value.be16[7]));
+
+                    if (ofp_to_u16(port) < ofp_to_u16(OFPP_MAX)
+                            || port == OFPP_IN_PORT
+                            || port == OFPP_FLOOD
+                            || port == OFPP_LOCAL
+                            || port == OFPP_ALL) {
+                        ofpact_put_OUTPUT(ofpacts)->port = port;
+                    }
+                }
+                break;
+            case NX_LEARN_DST_RESERVED:
+                resubmit = ofpact_put_RESUBMIT(ofpacts);
+                resubmit->ofpact.compat = OFPUTIL_NXAST_RESUBMIT_TABLE;
+                /* hard coded values */
+                resubmit->table_id = 2;
+                break;
+
+        }
+    }
+
+    struct ofpact *learn_actions;
+    learn_actions = (struct ofpact *) end;
+
+    // Do spec substitution as needed
+    do_deferral(learn_actions, learn->ofpacts_len, flow);
+
+    ofpbuf_put(ofpacts, learn_actions, learn->ofpacts_len);
+
+    ofpact_pad(ofpacts);
+
+    fm->ofpacts = ofpacts->data;
+    fm->ofpacts_len = ofpacts->size;
+}
+
 /* 
 * Actions taken cannot assume that there's a packet, because there isn't one.
 */
@@ -4585,7 +4712,7 @@ void timeout_act_execute(const struct ofpact_timeout_act *act,
                     // Populate fm with the learn attributes
                     //ovs_mutex_unlock(&ofproto_mutex);
                     learn_learn_execute(ofpact_get_LEARN_LEARN(a), flow, &fm,
-                                        &ofpacts_buf, atomic_table_id);
+                                        &ofpacts_buf, atomic_table_id, rule);
                     
                     // ofproto_flow_mod(struct ofproto *ofproto, struct ofputil_flow_mod *fm)
                     ofproto_flow_mod(ofproto, &fm);
