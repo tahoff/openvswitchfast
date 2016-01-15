@@ -2255,10 +2255,12 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
     struct flow *flow = &ctx->xin->flow;
     const struct ofpact *a;
     uint8_t atomic_table_id = get_table_val();
+    uint8_t resubmit_done;
+    resubmit_done = 0;
 
     fprintf(stderr, "do_xlate_actions %u %u %i\n",
         ctx->table_id, ctx->xin->flow.in_port,
-        ctx->xin->resubmit_stats ? ctx->xin->resubmit_stats->used : 0);
+        ofpacts_len); 
 
     OFPACT_FOR_EACH (a, ofpacts, ofpacts_len) {
         struct ofpact_controller *controller;
@@ -2361,6 +2363,7 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
             break;
 
         case OFPACT_RESUBMIT:
+            resubmit_done = 1;
             xlate_ofpact_resubmit(ctx, ofpact_get_RESUBMIT(a));
             break;
 
@@ -2524,12 +2527,15 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
         resub.table_id = ctx->table_id >= atomic_table_id ? 201 : ctx->table_id + 1;
         xlate_ofpact_resubmit(ctx, &resub); 
     }*/
-    /*if (ctx->table_id == 0) {
+    if (ctx->table_id == 0 && !resubmit_done && ctx->rule) {
         // resubmit to table_id + 1
         //ctx->table_id = ctx->table_id + 1;
+        
+        fprintf(stderr, "TABLE_ZERO NO_RESUB  %p\n", ctx->rule); 
+         
         xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
             ctx->table_id + 1, false);
-    }*/
+    }
 }
 
 void
