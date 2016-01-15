@@ -12,6 +12,15 @@ struct ofpact_increment_table_id;
 struct ofputil_flow_mod;
 struct nx_action_increment_table_id;
 
+// Counters that may be incremented
+#define TABLE_SPEC_INGRESS (1)
+#define TABLE_SPEC_EGRESS  (2)
+
+#define SIMON_TABLE_INGRESS_START (0)
+#define SIMON_TABLE_PRODUCTION_START (150)
+#define SIMON_TABLE_EGRESS_START (200)
+
+
 /* NXAST_INCREMENT_TABLE_ID helper functions.
  *
  * See include/openflow/nicira-ext.h for NXAST_INCREMENT_TABLE_ID specification.

@@ -482,6 +482,7 @@ struct ofpact_timeout_act {
  * Used for NXAST_INCREMENT_TABLE_ID. */
 struct ofpact_increment_table_id {
     struct ofpact ofpact;
+    uint8_t counter_spec;
 };
 
 /* OFPACT_MULTIPATH.

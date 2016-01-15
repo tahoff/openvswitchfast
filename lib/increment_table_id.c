@@ -31,19 +31,28 @@
 #include "ovs-atomic.h"
 #include "unaligned.h"
 #include <unistd.h>
+#include "vlog.h"
 
-static atomic_uint8_t atomic_table = ATOMIC_VAR_INIT(0); 
+VLOG_DEFINE_THIS_MODULE(increment_table_id);
 
-/* Converts 'nic' into a "struct ofpact_increment_table_id" and appends that 
+static atomic_uint8_t atomic_table_id_ingress = ATOMIC_VAR_INIT(0);
+static atomic_uint8_t atomic_table_id_egress  = ATOMIC_VAR_INIT(0);
+
+uint8_t increment_table_counter(uint8_t counter_spec, uint8_t inc);
+
+/* Converts 'nic' into a "struct ofpact_increment_table_id" and appends that
  * struct to 'ofpacts'.  Returns 0 if successful, otherwise an OFPERR_*. */
 enum ofperr
 increment_table_id_from_openflow(const struct nx_action_increment_table_id *nic,
                                  struct ofpbuf *ofpacts)
 {
-    fprintf(stderr, "increment_table_id_from_openflow called\n");
     struct ofpact_increment_table_id *incr_table_id;
 
+    fprintf(stderr, "increment_table_id_from_openflow called\n");
+
     incr_table_id = ofpact_put_INCREMENT_TABLE_ID(ofpacts);
+    incr_table_id->counter_spec = nic->counter_spec;
+
     fprintf(stderr, "increment_table_id_from_openflow returning\n");
     return 0;
 }
@@ -71,29 +80,60 @@ increment_table_id_to_nxast(const struct ofpact_increment_table_id *incr_table_i
     fprintf(stderr, "increment_table_id_to_nxast called\n");
 
     nic = ofputil_put_NXAST_INCREMENT_TABLE_ID(openflow);
+    nic->counter_spec = incr_table_id->counter_spec;
+
     fprintf(stderr, "increment_table_id_to_nxast returning\n");
 }
+
+uint8_t
+increment_table_counter(uint8_t counter_spec, uint8_t inc)
+{
+    uint8_t orig = 0;
+
+    switch(counter_spec)
+    {
+    case TABLE_SPEC_INGRESS:
+	atomic_add(&atomic_table_id_ingress, inc, &orig);
+	VLOG_WARN("Incrementing ingress table id from:  %"PRIu8 ", inc:  %"PRIu8, orig, inc);
+	break;
+    case TABLE_SPEC_EGRESS:
+	atomic_add(&atomic_table_id_egress, inc, &orig);
+	VLOG_WARN("Incrementing ingress table id from:  %"PRIu8 ", inc:  %"PRIu8, orig, inc);
+	break;
+    default:
+	VLOG_WARN("Unknown counter spec");
+    }
+
+    return orig;
+}
+
 
 /* Increments a global shared value for a table_id, and then returns the value */
 uint8_t
 increment_table_id_execute(const struct ofpact_increment_table_id *incr_table_id,
                          struct flow *flow)
 {
+    uint8_t orig;
+
     fprintf(stderr, "increment_table_id_execute called\n");
-    
+
     // Increment table_id value
-    unsigned long long int orig;
-    atomic_add(&atomic_table, 1, &orig);
-    
+    //unsigned long long int orig;
+    //atomic_add(&atomic_table, 1, &orig);
+    orig = increment_table_counter(incr_table_id->counter_spec, 1);
+
     fprintf(stderr, "increment_table_id_execute returning\n");
-    return orig; 
+    return orig;
 }
 
 uint8_t get_table_val()
 {
     uint8_t orig;
-    atomic_add(&atomic_table, 0, &orig);
-    return orig;    
+
+    // TODO:  Increment based on spec
+    //atomic_add(&atomic_table, 0, &orig);
+    orig = increment_table_counter(TABLE_SPEC_INGRESS, 0);
+    return orig;
 }
 
 /* Returns NULL if successful, otherwise a malloc()'d string describing the
@@ -105,13 +145,16 @@ increment_table_id_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
     fprintf(stderr, "increment_table_id_parse__ called\n");
 
     incr_table_id = ofpact_put_INCREMENT_TABLE_ID(ofpacts);
+    incr_table_id->counter_spec = TABLE_SPEC_INGRESS;
 
     //ofpact_update_len(ofpacts, &incr_table_id->ofpact);
     fprintf(stderr, "increment_table_id_parse__ returning\n");
+
+    return NULL;
 }
 
-/* Parses 'arg' as a set of arguments to the "increment_table_id" action and 
- * appends a matching OFPACT_INCREMENT_TABLE_ID action to 'ofpacts'. 
+/* Parses 'arg' as a set of arguments to the "increment_table_id" action and
+ * appends a matching OFPACT_INCREMENT_TABLE_ID action to 'ofpacts'.
  * ovs-ofctl(8) describes the format parsed.
  *
  * Returns NULL if successful, otherwise a malloc()'d string describing the
