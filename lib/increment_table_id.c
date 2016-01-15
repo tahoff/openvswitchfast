@@ -62,8 +62,10 @@ enum ofperr
 increment_table_id_check(const struct ofpact_increment_table_id *incr_table_id,
                        const struct flow *flow)
 {
-    fprintf(stderr, "increment_table_id_check called\n");
     struct match match;
+
+    fprintf(stderr, "increment_table_id_check called\n");
+
     match_init_catchall(&match);
 
     fprintf(stderr, "increment_table_id_check returning\n");
@@ -98,7 +100,7 @@ increment_table_counter(uint8_t counter_spec, uint8_t inc)
 	break;
     case TABLE_SPEC_EGRESS:
 	atomic_add(&atomic_table_id_egress, inc, &orig);
-	VLOG_WARN("Incrementing ingress table id from:  %"PRIu8 ", inc:  %"PRIu8, orig, inc);
+	VLOG_WARN("Incrementing egress table id from:  %"PRIu8 ", inc:  %"PRIu8, orig, inc);
 	break;
     default:
 	VLOG_WARN("Unknown counter spec");
@@ -131,8 +133,8 @@ uint8_t get_table_val()
     uint8_t orig;
 
     // TODO:  Increment based on spec
-    //atomic_add(&atomic_table, 0, &orig);
     orig = increment_table_counter(TABLE_SPEC_INGRESS, 0);
+
     return orig;
 }
 
@@ -142,10 +144,19 @@ static char * WARN_UNUSED_RESULT
 increment_table_id_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
 {
     struct ofpact_increment_table_id *incr_table_id;
-    fprintf(stderr, "increment_table_id_parse__ called\n");
+    fprintf(stderr, "increment_table_id_parse__ called, args:  %s\n", arg);
 
     incr_table_id = ofpact_put_INCREMENT_TABLE_ID(ofpacts);
+
     incr_table_id->counter_spec = TABLE_SPEC_INGRESS;
+
+    if(!strcmp(arg, "INGRESS")) {
+	incr_table_id->counter_spec = TABLE_SPEC_INGRESS;
+    } else if(!strcmp(arg, "EGRESS")) {
+	incr_table_id->counter_spec = TABLE_SPEC_EGRESS;
+    } else {
+	return xasprintf("%s:  Invalid counter spec, must be 'INGRESS' or 'EGRESS'", orig);
+    }
 
     //ofpact_update_len(ofpacts, &incr_table_id->ofpact);
     fprintf(stderr, "increment_table_id_parse__ returning\n");
@@ -185,6 +196,7 @@ increment_table_id_format(const struct ofpact_increment_table_id *incr_table_id,
 
     match_init_catchall(&match);
 
-    ds_put_cstr(s, "increment_table_id()");
+    ds_put_format(s, "increment_table_id(%s)",
+		  (incr_table_id->counter_spec == TABLE_SPEC_EGRESS) ? "EGRESS" : "INGRESS");
     fprintf(stderr, "increment_table_id_format returning\n");
 }
