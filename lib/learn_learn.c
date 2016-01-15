@@ -33,11 +33,6 @@
 #include "unaligned.h"
 #include <unistd.h>
 
-void populate_deferral_values(struct ofpact_learn_learn *act,
-                              const struct flow *flow);
-void do_deferral(struct ofpact *ofpacts, uint32_t ofpacts_len,
-                 const struct flow *flow);
-
 static uint8_t
 get_u8(const void **pp) {
     const uint8_t *p = *pp;
@@ -591,6 +586,7 @@ learn_learn_to_nxast(const struct ofpact_learn_learn *learn,
  * 'ofpacts' buffer.
  *
  * The caller has to actually execute 'fm'. */
+/*
 void
 learn_learn_execute(const struct ofpact_learn_learn *learn,
                     const struct flow *flow, struct ofputil_flow_mod *fm,
@@ -688,7 +684,6 @@ learn_learn_execute(const struct ofpact_learn_learn *learn,
         case NX_LEARN_DST_RESERVED:
             resubmit = ofpact_put_RESUBMIT(ofpacts);
             resubmit->ofpact.compat = OFPUTIL_NXAST_RESUBMIT_TABLE;
-            /* hard coded values */
             resubmit->table_id = 2;
             break; 
 
@@ -707,7 +702,7 @@ learn_learn_execute(const struct ofpact_learn_learn *learn,
 
     fm->ofpacts = ofpacts->data;
     fm->ofpacts_len = ofpacts->size;
-}
+}*/
 
 /* Perform a bitwise-OR on 'wc''s fields that are relevant as sources in
  * the learn action 'learn'. */
@@ -963,7 +958,13 @@ learn_learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
         } else if (!strcmp(name, "learn_on_timeout")) {
             learn->learn_on_timeout = atoi(value);
         } else if (!strcmp(name, "use_atomic_table")) {
-            learn->table_spec = atoi(value);
+            if (atoi(value) != 0) {
+                learn->table_spec = LEARN_USING_ATOMIC_TABLE;
+            }
+        } else if (!strcmp(name, "use_rule_table")) {
+            if (atoi(value) != 0) {
+                learn->table_spec = LEARN_USING_RULE_TABLE;
+            }
         } else if (!strcmp(name, "actions")) {
            // TODO check
            fprintf(stderr, "learn_learn_parse__ actions %s\n", value);
@@ -1149,7 +1150,12 @@ learn_learn_format(const struct ofpact_learn_learn *learn, struct ds *s)
     }
 
     ds_put_format(s, ",learn_on_timeout=%"PRIu8, learn->learn_on_timeout);
-    ds_put_format(s, ",use_atomic_table=%"PRIu8, learn->table_spec);
+
+    if (learn->table_spec == LEARN_USING_ATOMIC_TABLE) {
+        ds_put_cstr(s, ",table_spec=LEARN_USING_ATOMIC_TABLE");
+    } else if (learn->table_spec == LEARN_USING_RULE_TABLE) {
+        ds_put_cstr(s, ",table_spec=LEARN_USING_RULE_TABLE");
+    }
     
     spec = (const struct ofpact_learn_spec *) learn->data;
     spec_end = spec + learn->n_specs;

@@ -1332,6 +1332,7 @@ static int
 add_internal_flows(struct ofproto_dpif *ofproto)
 {
     struct ofpact_controller *controller;
+    struct ofpact_resubmit *resub;
     uint64_t ofpacts_stub[128 / 8];
     struct ofpbuf ofpacts;
     int error;
@@ -1340,10 +1341,17 @@ add_internal_flows(struct ofproto_dpif *ofproto)
     ofpbuf_use_stack(&ofpacts, ofpacts_stub, sizeof ofpacts_stub);
     id = 1;
 
+    /*
     controller = ofpact_put_CONTROLLER(&ofpacts);
     controller->max_len = UINT16_MAX;
     controller->controller_id = 0;
     controller->reason = OFPR_NO_MATCH;
+    */
+
+    resub = ofpact_put_RESUBMIT(&ofpacts);
+    resub->table_id = 1;
+    resub->in_port = OFPP_IN_PORT;
+
     ofpact_pad(&ofpacts);
 
     error = add_internal_flow(ofproto, id++, &ofpacts, &ofproto->miss_rule);
