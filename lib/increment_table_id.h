@@ -20,6 +20,16 @@ struct nx_action_increment_table_id;
 #define SIMON_TABLE_PRODUCTION_START (150)
 #define SIMON_TABLE_EGRESS_START (200)
 
+// Convenience macros for identifying table ranges
+/* #define TABLE_IS_INGRESS(id) ((id >= SIMON_TABLE_INGRESS_START) && \ */
+/* 			      (id < SIMON_TABLE_PRODUCTION_START)) */
+#define TABLE_IS_INGRESS(id) ((id < SIMON_TABLE_PRODUCTION_START))
+
+#define TABLE_IS_PRODUCTION(id) ((id >= SIMON_TABLE_PRODUCTION_START) && \
+				 (id < SIMON_TABLE_EGRESS_START))
+
+#define TABLE_IS_EGRESS(id) ((id >= SIMON_TABLE_EGRESS_START) && \
+			     (id < 254))
 
 /* NXAST_INCREMENT_TABLE_ID helper functions.
  *
@@ -41,5 +51,8 @@ char *increment_table_id_parse(char *, struct ofpbuf *ofpacts) WARN_UNUSED_RESUL
 void increment_table_id_format(const struct ofpact_increment_table_id *,
                                struct ds *);
 uint8_t get_table_val(void);
+
+uint8_t get_table_counter_by_id(uint8_t table_id);
+
 
 #endif /* increment_table_id.h */

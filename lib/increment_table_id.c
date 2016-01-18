@@ -138,6 +138,21 @@ uint8_t get_table_val()
     return orig;
 }
 
+uint8_t get_table_counter_by_id(uint8_t table_id)
+{
+    uint8_t ret = 0;
+
+    if(TABLE_IS_INGRESS(table_id)) {
+	ret = increment_table_counter(TABLE_SPEC_INGRESS, 0);
+    } else if(TABLE_IS_EGRESS(table_id)) {
+	ret = increment_table_counter(TABLE_SPEC_EGRESS, 0);
+    } else {
+	VLOG_WARN("Attempting to get counter table id with unknown spec:  %"PRIu8, table_id);
+    }
+
+    return ret;
+}
+
 /* Returns NULL if successful, otherwise a malloc()'d string describing the
  * error.  The caller is responsible for freeing the returned string. */
 static char * WARN_UNUSED_RESULT

@@ -1701,6 +1701,7 @@ xlate_table_action(struct xlate_ctx *ctx,
         fprintf(stderr, "----- xlate_table_action %u %u ", ctx->table_id, table_id);
         ctx->table_id = table_id;
         fprintf(stderr, "%u-----\n", ctx->table_id);
+	VLOG_WARN("Performing table action for table %"PRIu8" -> %"PRIu8, table_id, ctx->table_id);
 
         /* Look up a flow with 'in_port' as the input port.  Then restore the
          * original input port (otherwise OFPP_NORMAL and OFPP_IN_PORT will
@@ -1714,10 +1715,15 @@ xlate_table_action(struct xlate_ctx *ctx,
         if (ctx->xin->resubmit_hook) {
             ctx->xin->resubmit_hook(ctx->xin, rule, ctx->recurse);
         }
-        
-        if (!rule && may_packet_in && table_id > 200) {
-            fprintf(stderr, "xlate_table_action 3\n");
+
+	// If our rule returned a miss and we're in the production table space,
+	// construct a miss rule
+        if (!rule && may_packet_in && TABLE_IS_PRODUCTION(table_id)) {
+
             struct xport *xport;
+
+            fprintf(stderr, "xlate_table_action 3\n");
+	    VLOG_WARN("Sending miss for table %"PRIu8, table_id);
 
             /* XXX
              * check if table configuration flags
@@ -1729,9 +1735,8 @@ xlate_table_action(struct xlate_ctx *ctx,
             choose_miss_rule(xport ? xport->config : 0,
                              ctx->xbridge->miss_rule,
                              ctx->xbridge->no_packet_in_rule, &rule);
-        
         }
-        
+
         if (rule) {
             xlate_recursively(ctx, rule);
             rule_dpif_unref(rule);
@@ -1739,15 +1744,42 @@ xlate_table_action(struct xlate_ctx *ctx,
 
         // Perform resumbit through atomic tables
         fprintf(stderr, "xlate_table_action \n");
-        if (table_id < get_table_val() && table_id <= 200) {
-            fprintf(stderr, "xlate_table_action 1\n");
-            ctx->table_id = table_id + 1;
-            xlate_table_action(ctx, in_port, table_id + 1, may_packet_in);
-        } else if (table_id >= get_table_val() && table_id <= 200) {
-            fprintf(stderr, "xlate_table_action 2\n");
-            ctx->table_id = 201;
-            xlate_table_action(ctx, in_port, 201, may_packet_in);
-        }
+
+	// If we're in the simon table space, and the next table is populated,
+	// submit to the next table
+	if(!TABLE_IS_PRODUCTION(table_id)) {
+
+	    uint8_t counter_val = get_table_counter_by_id(table_id);
+
+	    if ((table_id < counter_val)) {
+		fprintf(stderr, "xlate_table_action 1\n");
+		ctx->table_id = table_id + 1;
+		xlate_table_action(ctx, in_port, table_id + 1, may_packet_in);
+	    } else if ((table_id >= counter_val)) { // Out of tables, submit to next block
+		fprintf(stderr, "xlate_table_action 2\n");
+		ctx->table_id = SIMON_TABLE_PRODUCTION_START;
+		xlate_table_action(ctx, in_port, SIMON_TABLE_PRODUCTION_START, may_packet_in);
+	    }
+	}
+
+	uint8_t counter_val;
+	counter_val = get_table_counter_by_id(table_id);
+
+	if (TABLE_IS_INGRESS(table_id)) {
+	    uint8_t next_table_id = (table_id < counter_val) ? table_id + 1 :
+		                                               SIMON_TABLE_PRODUCTION_START;
+	    xlate_table_action(ctx, in_port, next_table_id, may_packet_in);
+	} else if (TABLE_IS_PRODUCTION(table_id)) {
+	    // How do we know if we're at the end of the production tables?  We don't.
+	} else if (TABLE_IS_EGRESS(table_id)) {
+	    if(table_id < counter_val) {
+		xlate_table_action(ctx, in_port, table_id + 1, may_packet_in);
+	    }
+	    // If the table ID exceeds the counter value, we'r'e done.
+	} else {
+	    VLOG_WARN("Table ID not in any block:  %"PRIu8, table_id);
+	}
+
 
         ctx->table_id = old_table_id;
     } else {
