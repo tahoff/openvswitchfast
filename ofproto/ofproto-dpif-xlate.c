@@ -215,7 +215,8 @@ static void clear_skb_priorities(struct xport *);
 static bool dscp_from_skb_priority(const struct xport *, uint32_t skb_priority,
                                    uint8_t *dscp);
 
-static void do_xlate_egress_action(const struct ofpact *a, struct xlate_ctx *ctx);
+static void do_xlate_egress_action(const struct ofpact *a, struct xlate_ctx *ctx,
+                                   const struct ofpact *ofpacts, size_t ofpacts_len);
 
 
 void
@@ -2534,7 +2535,7 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
 	// If we are in the production table space, add some
 	// actions to load metadata for the egress table and resubmit.
 	if(TABLE_IS_PRODUCTION(ctx->table_id)) {
-	    do_xlate_egress_action(a, ctx);
+	    do_xlate_egress_action(a, ctx, ofpacts, ofpacts_len);
 	}
 
     }
@@ -2554,11 +2555,30 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
 }
 
 static void
-do_xlate_egress_action(const struct ofpact *a, struct xlate_ctx *ctx)
+do_xlate_egress_action(const struct ofpact *a, struct xlate_ctx *ctx,
+                       const struct ofpact *ofpacts, size_t ofpacts_len)
 {
+    struct ofpact_reg_load *load;
+    const struct mf_field *mf;
+    union mf_value mf_value;
+    struct match match;
+    struct flow flow;
+
     switch(a->type)
     {
     case OFPACT_OUTPUT:
+#if 0
+	load = ofpact_put_REG_LOAD(ofpacts);
+	mf = mf_from_id(MFF_REG1);
+
+	// Set the value and load it into the mf_value
+	flow.regs[1] = ctx->xin->flow.in_port.ofp_port;
+	mf_get_value(mf, &flow, &mf_value);
+
+	// Load the mf_value into the load action
+	ofpact_set_field_init(load, mf, &mf_value);
+#endif
+	ctx->xin->flow.regs[1] = ctx->xin->flow.in_port.ofp_port;
 	// Resubmit to the egress tables
 	xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
 			   SIMON_TABLE_EGRESS_START, false);
