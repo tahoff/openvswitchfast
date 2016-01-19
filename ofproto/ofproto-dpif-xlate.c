@@ -217,8 +217,7 @@ static void clear_skb_priorities(struct xport *);
 static bool dscp_from_skb_priority(const struct xport *, uint32_t skb_priority,
                                    uint8_t *dscp);
 
-static void do_xlate_egress_action(const struct ofpact *a, struct xlate_ctx *ctx,
-                                   const struct ofpact *ofpacts, size_t ofpacts_len);
+static void do_xlate_egress_action(const struct ofpact *a, struct xlate_ctx *ctx);
 
 
 void
@@ -2537,11 +2536,22 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
 	// If we are in the production table space, add some
 	// actions to load metadata for the egress table and resubmit.
 	if(TABLE_IS_PRODUCTION(ctx->table_id)) {
-	    do_xlate_egress_action(a, ctx, ofpacts, ofpacts_len);
+	    do_xlate_egress_action(a, ctx);
 	}
 
     }
-    atomic_table_id = get_table_val();
+
+    /* If the action set is empty, we have a drop "action", so resubmit to the egress tables */
+    if((TABLE_IS_PRODUCTION(ctx->table_id) && (ofpacts_len == 0))) {
+	// Load the current output port into a register
+	ctx->xin->flow.regs[SIMON_OUTPUT_STATUS_REG] = SIMON_OUTPUT_STATUS_DROP;
+
+	// Resubmit to the egress tables
+	xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
+			   SIMON_TABLE_EGRESS_START, false);
+    }
+
+    //atomic_table_id = get_table_val();
 
     if (ctx->table_id == 0 && !resubmit_done && ctx->rule) {
         // resubmit to table_id + 1
@@ -2557,8 +2567,7 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
 }
 
 static void
-do_xlate_egress_action(const struct ofpact *a, struct xlate_ctx *ctx,
-                       const struct ofpact *ofpacts, size_t ofpacts_len)
+do_xlate_egress_action(const struct ofpact *a, struct xlate_ctx *ctx)
 {
     struct ofpact_output *output;
 
