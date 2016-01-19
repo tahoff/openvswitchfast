@@ -1747,35 +1747,36 @@ xlate_table_action(struct xlate_ctx *ctx,
 
 	// If we're in the simon table space, and the next table is populated,
 	// submit to the next table
-	if(!TABLE_IS_PRODUCTION(table_id)) {
+	/* if(!TABLE_IS_PRODUCTION(table_id)) { */
 
-	    uint8_t counter_val = get_table_counter_by_id(table_id);
+	/*     uint8_t counter_val = get_table_counter_by_id(table_id); */
 
-	    if ((table_id < counter_val)) {
-		fprintf(stderr, "xlate_table_action 1\n");
-		ctx->table_id = table_id + 1;
-		xlate_table_action(ctx, in_port, table_id + 1, may_packet_in);
-	    } else if ((table_id >= counter_val)) { // Out of tables, submit to next block
-		fprintf(stderr, "xlate_table_action 2\n");
-		ctx->table_id = SIMON_TABLE_PRODUCTION_START;
-		xlate_table_action(ctx, in_port, SIMON_TABLE_PRODUCTION_START, may_packet_in);
-	    }
-	}
+	/*     if ((table_id < counter_val)) { */
+	/* 	fprintf(stderr, "xlate_table_action 1\n"); */
+	/* 	ctx->table_id = table_id + 1; */
+	/* 	xlate_table_action(ctx, in_port, table_id + 1, may_packet_in); */
+	/*     } else if ((table_id >= counter_val)) { // Out of tables, submit to next block */
+	/* 	fprintf(stderr, "xlate_table_action 2\n"); */
+	/* 	ctx->table_id = SIMON_TABLE_PRODUCTION_START; */
+	/* 	xlate_table_action(ctx, in_port, SIMON_TABLE_PRODUCTION_START, may_packet_in); */
+	/*     } */
+	/* } */
 
 	uint8_t counter_val;
-	counter_val = get_table_counter_by_id(table_id);
 
 	if (TABLE_IS_INGRESS(table_id)) {
+	    counter_val = get_table_counter_by_id(table_id);
 	    uint8_t next_table_id = (table_id < counter_val) ? table_id + 1 :
 		                                               SIMON_TABLE_PRODUCTION_START;
 	    xlate_table_action(ctx, in_port, next_table_id, may_packet_in);
 	} else if (TABLE_IS_PRODUCTION(table_id)) {
 	    // How do we know if we're at the end of the production tables?  We don't.
 	} else if (TABLE_IS_EGRESS(table_id)) {
+	    counter_val = get_table_counter_by_id(table_id);
 	    if(table_id < counter_val) {
 		xlate_table_action(ctx, in_port, table_id + 1, may_packet_in);
 	    }
-	    // If the table ID exceeds the counter value, we'r'e done.
+	    // If the table ID exceeds the counter value, we're done.
 	} else {
 	    VLOG_WARN("Table ID not in any block:  %"PRIu8, table_id);
 	}
