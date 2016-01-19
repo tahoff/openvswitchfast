@@ -4,6 +4,9 @@
 #include "compiler.h"
 #include "ofp-errors.h"
 
+#include "simon.h"
+
+
 struct ds;
 struct flow;
 struct flow_wildcards;
@@ -16,20 +19,6 @@ struct nx_action_increment_table_id;
 #define TABLE_SPEC_INGRESS (1)
 #define TABLE_SPEC_EGRESS  (2)
 
-#define SIMON_TABLE_INGRESS_START (0)
-#define SIMON_TABLE_PRODUCTION_START (150)
-#define SIMON_TABLE_EGRESS_START (200)
-
-// Convenience macros for identifying table ranges
-/* #define TABLE_IS_INGRESS(id) ((id >= SIMON_TABLE_INGRESS_START) && \ */
-/* 			      (id < SIMON_TABLE_PRODUCTION_START)) */
-#define TABLE_IS_INGRESS(id) ((id < SIMON_TABLE_PRODUCTION_START))
-
-#define TABLE_IS_PRODUCTION(id) ((id >= SIMON_TABLE_PRODUCTION_START) && \
-				 (id < SIMON_TABLE_EGRESS_START))
-
-#define TABLE_IS_EGRESS(id) ((id >= SIMON_TABLE_EGRESS_START) && \
-			     (id < 254))
 
 /* NXAST_INCREMENT_TABLE_ID helper functions.
  *

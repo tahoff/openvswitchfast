@@ -51,6 +51,8 @@
 #include "tunnel.h"
 #include "vlog.h"
 
+#include "simon.h"
+
 COVERAGE_DEFINE(xlate_actions);
 
 VLOG_DEFINE_THIS_MODULE(ofproto_dpif_xlate);
@@ -2558,31 +2560,19 @@ static void
 do_xlate_egress_action(const struct ofpact *a, struct xlate_ctx *ctx,
                        const struct ofpact *ofpacts, size_t ofpacts_len)
 {
-    struct ofpact_reg_load *load;
-    const struct mf_field *mf;
-    union mf_value mf_value;
-    struct match match;
-    struct flow flow;
 
     switch(a->type)
     {
     case OFPACT_OUTPUT:
-#if 0
-	load = ofpact_put_REG_LOAD(ofpacts);
-	mf = mf_from_id(MFF_REG1);
 
-	// Set the value and load it into the mf_value
-	flow.regs[1] = ctx->xin->flow.in_port.ofp_port;
-	mf_get_value(mf, &flow, &mf_value);
+	// Load the current output port into a register
+	ctx->xin->flow.regs[SIMON_OUTPUT_STATUS_REG] = ctx->xin->flow.in_port.ofp_port;
 
-	// Load the mf_value into the load action
-	ofpact_set_field_init(load, mf, &mf_value);
-#endif
-	ctx->xin->flow.regs[1] = ctx->xin->flow.in_port.ofp_port;
 	// Resubmit to the egress tables
 	xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
 			   SIMON_TABLE_EGRESS_START, false);
 	break;
+
     case OFPACT_CONTROLLER:
 	// Resubmit to the egress tables
 	xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
