@@ -1698,6 +1698,8 @@ xlate_table_action(struct xlate_ctx *ctx,
         ofp_port_t old_in_port = ctx->xin->flow.in_port.ofp_port;
         uint8_t old_table_id = ctx->table_id;
 
+	uint8_t counter_val;
+
         fprintf(stderr, "----- xlate_table_action %u %u ", ctx->table_id, table_id);
         ctx->table_id = table_id;
         fprintf(stderr, "%u-----\n", ctx->table_id);
@@ -1742,38 +1744,18 @@ xlate_table_action(struct xlate_ctx *ctx,
             rule_dpif_unref(rule);
         }
 
-        // Perform resumbit through atomic tables
-        fprintf(stderr, "xlate_table_action \n");
-
-	// If we're in the simon table space, and the next table is populated,
-	// submit to the next table
-	/* if(!TABLE_IS_PRODUCTION(table_id)) { */
-
-	/*     uint8_t counter_val = get_table_counter_by_id(table_id); */
-
-	/*     if ((table_id < counter_val)) { */
-	/* 	fprintf(stderr, "xlate_table_action 1\n"); */
-	/* 	ctx->table_id = table_id + 1; */
-	/* 	xlate_table_action(ctx, in_port, table_id + 1, may_packet_in); */
-	/*     } else if ((table_id >= counter_val)) { // Out of tables, submit to next block */
-	/* 	fprintf(stderr, "xlate_table_action 2\n"); */
-	/* 	ctx->table_id = SIMON_TABLE_PRODUCTION_START; */
-	/* 	xlate_table_action(ctx, in_port, SIMON_TABLE_PRODUCTION_START, may_packet_in); */
-	/*     } */
-	/* } */
-
-	uint8_t counter_val;
-
 	if (TABLE_IS_INGRESS(table_id)) {
+	    uint8_t next_table_id;
+
 	    counter_val = get_table_counter_by_id(table_id);
-	    uint8_t next_table_id = (table_id < counter_val) ? table_id + 1 :
+	    next_table_id = (table_id < counter_val) ? table_id + 1 :
 		                                               SIMON_TABLE_PRODUCTION_START;
 	    xlate_table_action(ctx, in_port, next_table_id, may_packet_in);
 	} else if (TABLE_IS_PRODUCTION(table_id)) {
 	    // How do we know if we're at the end of the production tables?  We don't.
 	} else if (TABLE_IS_EGRESS(table_id)) {
 	    counter_val = get_table_counter_by_id(table_id);
-	    if(table_id < counter_val) {
+	    if((table_id - SIMON_TABLE_EGRESS_START) < counter_val) {
 		xlate_table_action(ctx, in_port, table_id + 1, may_packet_in);
 	    }
 	    // If the table ID exceeds the counter value, we're done.
@@ -1795,9 +1777,10 @@ static void
 xlate_ofpact_resubmit(struct xlate_ctx *ctx,
                       const struct ofpact_resubmit *resubmit)
 {
-    fprintf(stderr, "xlate_ofpact_resumbit\n");
     ofp_port_t in_port;
     uint8_t table_id;
+
+    fprintf(stderr, "xlate_ofpact_resumbit\n");
 
     in_port = resubmit->in_port;
     if (in_port == OFPP_IN_PORT) {
@@ -2293,7 +2276,7 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
 
     fprintf(stderr, "do_xlate_actions %u %u %i\n",
         ctx->table_id, ctx->xin->flow.in_port,
-        ofpacts_len); 
+        ofpacts_len);
 
     OFPACT_FOR_EACH (a, ofpacts, ofpacts_len) {
         struct ofpact_controller *controller;
@@ -2482,17 +2465,17 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
             xlate_learn_learn_action(ctx, ofpact_get_LEARN_LEARN(a),
                 atomic_table_id, ctx->xin->rule);
             break;
- 
+
         case OFPACT_LEARN_DELETE:
             xlate_learn_delete_action(ctx, ofpact_get_LEARN_DELETE(a),
                 atomic_table_id, ctx->xin->rule);
             break;
-        
+
         case OFPACT_INCREMENT_TABLE_ID:
             atomic_table_id =
                 xlate_increment_table_id_action(ctx, ofpact_get_INCREMENT_TABLE_ID(a));
             break;
- 
+
         case OFPACT_TIMEOUT_ACT:
             /* Don't execute a timeout_act, until the rule expires */
             xlate_timeout_act_action(ctx, ofpact_get_TIMEOUT_ACT(a));
@@ -2540,35 +2523,83 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
             xlate_sample_action(ctx, ofpact_get_SAMPLE(a));
             break;
         }
+
+	// If we are in the production table space, add some
+	// actions to load metadata for the egress table and resubmit.
+	if(TABLE_IS_PRODUCTION(ctx->table_id)) {
+	    switch(a->type)
+	    {
+	    case OFPACT_OUTPUT:
+		// Resubmit to the egress tables
+		xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
+				   SIMON_TABLE_EGRESS_START, false);
+		break;
+	    case OFPACT_CONTROLLER:
+		// Resubmit to the egress tables
+		xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
+				   SIMON_TABLE_EGRESS_START, false);
+		break;
+	    case OFPACT_ENQUEUE:
+	    case OFPACT_OUTPUT_REG:
+	    case OFPACT_BUNDLE:
+	    case OFPACT_SET_VLAN_VID:
+	    case OFPACT_SET_VLAN_PCP:
+	    case OFPACT_STRIP_VLAN:
+	    case OFPACT_PUSH_VLAN:
+	    case OFPACT_SET_ETH_SRC:
+	    case OFPACT_SET_ETH_DST:
+	    case OFPACT_SET_IPV4_SRC:
+	    case OFPACT_SET_IPV4_DST:
+	    case OFPACT_SET_IPV4_DSCP:
+	    case OFPACT_SET_L4_SRC_PORT:
+	    case OFPACT_SET_L4_DST_PORT:
+	    case OFPACT_REG_MOVE:
+	    case OFPACT_REG_LOAD:
+	    case OFPACT_STACK_PUSH:
+	    case OFPACT_STACK_POP:
+	    case OFPACT_DEC_TTL:
+	    case OFPACT_SET_MPLS_TTL:
+	    case OFPACT_DEC_MPLS_TTL:
+	    case OFPACT_SET_TUNNEL:
+	    case OFPACT_WRITE_METADATA:
+	    case OFPACT_SET_QUEUE:
+	    case OFPACT_POP_QUEUE:
+	    case OFPACT_FIN_TIMEOUT:
+	    case OFPACT_RESUBMIT:
+	    case OFPACT_LEARN:
+	    case OFPACT_LEARN_LEARN:
+	    case OFPACT_LEARN_DELETE:
+	    case OFPACT_INCREMENT_TABLE_ID:
+	    case OFPACT_TIMEOUT_ACT:
+	    case OFPACT_MULTIPATH:
+	    case OFPACT_NOTE:
+	    case OFPACT_EXIT:
+	    case OFPACT_PUSH_MPLS:
+	    case OFPACT_POP_MPLS:
+	    case OFPACT_SAMPLE:
+	    case OFPACT_CLEAR_ACTIONS:
+	    case OFPACT_GOTO_TABLE:
+	    case OFPACT_METER:
+	    default:
+		break;
+	    }
+	}
+
+
     }
     atomic_table_id = get_table_val();
-    // ctx->rule_dpif->up.table_id
-    /*if (ctx->table_id >= atomic_table_id && ctx->table_id <= 200) {
-        // resubmit to 201
-        //ctx->table_id = 201;
-        fprintf(stderr, "do_xlate_action resubmit to 201\n");
-        xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port, 201, false);
-    } else if (ctx->table_id <= 200) {
-        // resubmit to table_id + 1
-        //ctx->table_id = ctx->table_id + 1;
-        xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
-            ctx->table_id + 1, false);
-    }*/
-    /*if (ctx->table_id > 0 && ctx->table_id <= 200) {
-        struct ofpact_resubmit resub;
-        resub.in_port = ctx->xin->flow.in_port.ofp_port;
-        resub.table_id = ctx->table_id >= atomic_table_id ? 201 : ctx->table_id + 1;
-        xlate_ofpact_resubmit(ctx, &resub); 
-    }*/
+
     if (ctx->table_id == 0 && !resubmit_done && ctx->rule) {
         // resubmit to table_id + 1
         //ctx->table_id = ctx->table_id + 1;
-        
-        fprintf(stderr, "TABLE_ZERO NO_RESUB  %p\n", ctx->rule); 
-         
+
+        fprintf(stderr, "TABLE_ZERO NO_RESUB  %p\n", ctx->rule);
+
         xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
             ctx->table_id + 1, false);
     }
+
+
 }
 
 void
