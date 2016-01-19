@@ -215,6 +215,9 @@ static void clear_skb_priorities(struct xport *);
 static bool dscp_from_skb_priority(const struct xport *, uint32_t skb_priority,
                                    uint8_t *dscp);
 
+static void do_xlate_egress_action(const struct ofpact *a, struct xlate_ctx *ctx);
+
+
 void
 xlate_ofproto_set(struct ofproto_dpif *ofproto, const char *name,
                   struct dpif *dpif, struct rule_dpif *miss_rule,
@@ -1754,8 +1757,12 @@ xlate_table_action(struct xlate_ctx *ctx,
 	} else if (TABLE_IS_PRODUCTION(table_id)) {
 	    // How do we know if we're at the end of the production tables?  We don't.
 	} else if (TABLE_IS_EGRESS(table_id)) {
+	    uint8_t egress_table_id;
+
+	    egress_table_id = table_id - SIMON_TABLE_EGRESS_START;
 	    counter_val = get_table_counter_by_id(table_id);
-	    if((table_id - SIMON_TABLE_EGRESS_START) < counter_val) {
+
+	    if(egress_table_id < counter_val) {
 		xlate_table_action(ctx, in_port, table_id + 1, may_packet_in);
 	    }
 	    // If the table ID exceeds the counter value, we're done.
@@ -2527,64 +2534,8 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
 	// If we are in the production table space, add some
 	// actions to load metadata for the egress table and resubmit.
 	if(TABLE_IS_PRODUCTION(ctx->table_id)) {
-	    switch(a->type)
-	    {
-	    case OFPACT_OUTPUT:
-		// Resubmit to the egress tables
-		xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
-				   SIMON_TABLE_EGRESS_START, false);
-		break;
-	    case OFPACT_CONTROLLER:
-		// Resubmit to the egress tables
-		xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
-				   SIMON_TABLE_EGRESS_START, false);
-		break;
-	    case OFPACT_ENQUEUE:
-	    case OFPACT_OUTPUT_REG:
-	    case OFPACT_BUNDLE:
-	    case OFPACT_SET_VLAN_VID:
-	    case OFPACT_SET_VLAN_PCP:
-	    case OFPACT_STRIP_VLAN:
-	    case OFPACT_PUSH_VLAN:
-	    case OFPACT_SET_ETH_SRC:
-	    case OFPACT_SET_ETH_DST:
-	    case OFPACT_SET_IPV4_SRC:
-	    case OFPACT_SET_IPV4_DST:
-	    case OFPACT_SET_IPV4_DSCP:
-	    case OFPACT_SET_L4_SRC_PORT:
-	    case OFPACT_SET_L4_DST_PORT:
-	    case OFPACT_REG_MOVE:
-	    case OFPACT_REG_LOAD:
-	    case OFPACT_STACK_PUSH:
-	    case OFPACT_STACK_POP:
-	    case OFPACT_DEC_TTL:
-	    case OFPACT_SET_MPLS_TTL:
-	    case OFPACT_DEC_MPLS_TTL:
-	    case OFPACT_SET_TUNNEL:
-	    case OFPACT_WRITE_METADATA:
-	    case OFPACT_SET_QUEUE:
-	    case OFPACT_POP_QUEUE:
-	    case OFPACT_FIN_TIMEOUT:
-	    case OFPACT_RESUBMIT:
-	    case OFPACT_LEARN:
-	    case OFPACT_LEARN_LEARN:
-	    case OFPACT_LEARN_DELETE:
-	    case OFPACT_INCREMENT_TABLE_ID:
-	    case OFPACT_TIMEOUT_ACT:
-	    case OFPACT_MULTIPATH:
-	    case OFPACT_NOTE:
-	    case OFPACT_EXIT:
-	    case OFPACT_PUSH_MPLS:
-	    case OFPACT_POP_MPLS:
-	    case OFPACT_SAMPLE:
-	    case OFPACT_CLEAR_ACTIONS:
-	    case OFPACT_GOTO_TABLE:
-	    case OFPACT_METER:
-	    default:
-		break;
-	    }
+	    do_xlate_egress_action(a, ctx);
 	}
-
 
     }
     atomic_table_id = get_table_val();
@@ -2599,6 +2550,68 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
             ctx->table_id + 1, false);
     }
 
+
+}
+
+static void
+do_xlate_egress_action(const struct ofpact *a, struct xlate_ctx *ctx)
+{
+    switch(a->type)
+    {
+    case OFPACT_OUTPUT:
+	// Resubmit to the egress tables
+	xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
+			   SIMON_TABLE_EGRESS_START, false);
+	break;
+    case OFPACT_CONTROLLER:
+	// Resubmit to the egress tables
+	xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
+			   SIMON_TABLE_EGRESS_START, false);
+	break;
+    case OFPACT_ENQUEUE:
+    case OFPACT_OUTPUT_REG:
+    case OFPACT_BUNDLE:
+    case OFPACT_SET_VLAN_VID:
+    case OFPACT_SET_VLAN_PCP:
+    case OFPACT_STRIP_VLAN:
+    case OFPACT_PUSH_VLAN:
+    case OFPACT_SET_ETH_SRC:
+    case OFPACT_SET_ETH_DST:
+    case OFPACT_SET_IPV4_SRC:
+    case OFPACT_SET_IPV4_DST:
+    case OFPACT_SET_IPV4_DSCP:
+    case OFPACT_SET_L4_SRC_PORT:
+    case OFPACT_SET_L4_DST_PORT:
+    case OFPACT_REG_MOVE:
+    case OFPACT_REG_LOAD:
+    case OFPACT_STACK_PUSH:
+    case OFPACT_STACK_POP:
+    case OFPACT_DEC_TTL:
+    case OFPACT_SET_MPLS_TTL:
+    case OFPACT_DEC_MPLS_TTL:
+    case OFPACT_SET_TUNNEL:
+    case OFPACT_WRITE_METADATA:
+    case OFPACT_SET_QUEUE:
+    case OFPACT_POP_QUEUE:
+    case OFPACT_FIN_TIMEOUT:
+    case OFPACT_RESUBMIT:
+    case OFPACT_LEARN:
+    case OFPACT_LEARN_LEARN:
+    case OFPACT_LEARN_DELETE:
+    case OFPACT_INCREMENT_TABLE_ID:
+    case OFPACT_TIMEOUT_ACT:
+    case OFPACT_MULTIPATH:
+    case OFPACT_NOTE:
+    case OFPACT_EXIT:
+    case OFPACT_PUSH_MPLS:
+    case OFPACT_POP_MPLS:
+    case OFPACT_SAMPLE:
+    case OFPACT_CLEAR_ACTIONS:
+    case OFPACT_GOTO_TABLE:
+    case OFPACT_METER:
+    default:
+	break;
+    }
 
 }
 
