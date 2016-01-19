@@ -1,6 +1,8 @@
 #ifndef SIMON_H
 #define SIMON_H 1
 
+#include "openflow/openflow-1.0.h"
+
 // Table processing stages
 #define SIMON_TABLE_INGRESS_START (0)
 #define SIMON_TABLE_PRODUCTION_START (150)
@@ -21,9 +23,9 @@
 // Register definitions
 #define SIMON_OUTPUT_STATUS_REG (1)
 
-#define SIMON_OUTPUT_STATUS_FLOOD      (65535)
-#define SIMON_OUTPUT_STATUS_CONTROLLER (65534)
-#define SIMON_OUTPUT_STATUS_DROP       (65533)
+#define SIMON_OUTPUT_STATUS_FLOOD      (OFPP_FLOOD)
+#define SIMON_OUTPUT_STATUS_CONTROLLER (OFPP_CONTROLLER)
+#define SIMON_OUTPUT_STATUS_DROP       (OFPP_NONE)
 
 
 #endif

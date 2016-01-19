@@ -2560,13 +2560,16 @@ static void
 do_xlate_egress_action(const struct ofpact *a, struct xlate_ctx *ctx,
                        const struct ofpact *ofpacts, size_t ofpacts_len)
 {
+    struct ofpact_output *output;
 
     switch(a->type)
     {
     case OFPACT_OUTPUT:
 
+	output = ofpact_get_OUTPUT(a);
+
 	// Load the current output port into a register
-	ctx->xin->flow.regs[SIMON_OUTPUT_STATUS_REG] = ctx->xin->flow.in_port.ofp_port;
+	ctx->xin->flow.regs[SIMON_OUTPUT_STATUS_REG] = output->port;
 
 	// Resubmit to the egress tables
 	xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
@@ -2574,6 +2577,10 @@ do_xlate_egress_action(const struct ofpact *a, struct xlate_ctx *ctx,
 	break;
 
     case OFPACT_CONTROLLER:
+
+	// Load a constant signifying that this was a controller action
+	ctx->xin->flow.regs[SIMON_OUTPUT_STATUS_REG] = SIMON_OUTPUT_STATUS_CONTROLLER;
+
 	// Resubmit to the egress tables
 	xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
 			   SIMON_TABLE_EGRESS_START, false);
