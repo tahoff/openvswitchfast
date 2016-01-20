@@ -43,6 +43,8 @@
 #include "type-props.h"
 #include "vlog.h"
 
+#include "simon.h"
+
 VLOG_DEFINE_THIS_MODULE(ofp_util);
 
 /* Rate limit for OpenFlow message parse errors.  These always indicate a bug
@@ -4502,6 +4504,7 @@ ofputil_check_output_port(ofp_port_t port, ofp_port_t max_ports)
     switch (port) {
     case OFPP_IN_PORT:
     case OFPP_TABLE:
+    case SIMON_OFPP_TABLE_EGRESS:
     case OFPP_NORMAL:
     case OFPP_FLOOD:
     case OFPP_ALL:

@@ -2003,6 +2003,11 @@ xlate_output_action(struct xlate_ctx *ctx,
         xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
                            0, may_packet_in);
         break;
+    case SIMON_OFPP_TABLE_EGRESS:
+	VLOG_WARN("Sending flow to egress tables:  %"PRIx16, port);
+        xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
+                           SIMON_TABLE_EGRESS_START, may_packet_in);
+	break;
     case OFPP_NORMAL:
         xlate_normal(ctx);
         break;
@@ -2112,6 +2117,7 @@ slave_enabled_cb(ofp_port_t ofp_port, void *xbridge_)
     switch (ofp_port) {
     case OFPP_IN_PORT:
     case OFPP_TABLE:
+    case SIMON_OFPP_TABLE_EGRESS:
     case OFPP_NORMAL:
     case OFPP_FLOOD:
     case OFPP_ALL:
