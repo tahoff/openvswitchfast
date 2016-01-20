@@ -1708,7 +1708,9 @@ xlate_table_action(struct xlate_ctx *ctx,
         fprintf(stderr, "----- xlate_table_action %u %u ", ctx->table_id, table_id);
         ctx->table_id = table_id;
         fprintf(stderr, "%u-----\n", ctx->table_id);
-	VLOG_WARN("Performing table action for table %"PRIu8" -> %"PRIu8, table_id, ctx->table_id);
+	VLOG_WARN("Performing table action for table_id:  %"PRIu8", in_port:  %"PRIx16, table_id, in_port);
+	/* VLOG_WARN("Performing table action for table %"PRIu8" -> %"PRIu8 ", in_port:  %"PRIx16 ", old_in_port:  %"PRIx16, */
+	/* 	  table_id, ctx->table_id, in_port, old_in_port); */
 
         /* Look up a flow with 'in_port' as the input port.  Then restore the
          * original input port (otherwise OFPP_NORMAL and OFPP_IN_PORT will
