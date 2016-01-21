@@ -28,4 +28,5 @@
 #define SIMON_OUTPUT_STATUS_DROP       (OFPP_NONE)
 
 #define SIMON_OFPP_TABLE_EGRESS        OFP_PORT_C(0x42)
+#define SIMON_OFP_IN_XID_MASK          (0xbe000000)
 #endif

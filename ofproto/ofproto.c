@@ -2910,6 +2910,13 @@ handle_packet_out(struct ofconn *ofconn, const struct ofp_header *oh)
     /* Verify actions against packet, then send packet if successful. */
     in_port_.ofp_port = po.in_port;
     flow_extract(payload, 0, 0, NULL, &in_port_, &flow);
+
+    uint32_t xid = ntohl(oh->xid);
+
+    if(xid & SIMON_OFP_IN_XID_MASK) {
+	flow.regs[SIMON_OUTPUT_STATUS_REG] = xid & 0x0000ffff;
+    }
+
     error = ofproto_check_ofpacts(p, po.ofpacts, po.ofpacts_len, &flow, 0);
     if (!error) {
         error = p->ofproto_class->packet_out(p, payload, &flow,
