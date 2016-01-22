@@ -28,13 +28,11 @@ struct nx_action_increment_table_id;
 enum ofperr increment_table_id_from_openflow(
     const struct nx_action_increment_table_id *,
     struct ofpbuf *ofpacts);
-enum ofperr increment_table_id_check(const struct ofpact_increment_table_id *,
-                                     const struct flow *);
+enum ofperr increment_table_id_check(const struct ofpact_increment_table_id *);
 void increment_table_id_to_nxast(const struct ofpact_increment_table_id *,
                                  struct ofpbuf *openflow);
 
-uint8_t increment_table_id_execute(
-    const struct ofpact_increment_table_id *, struct flow *);
+uint8_t increment_table_id_execute(const struct ofpact_increment_table_id *);
 
 char *increment_table_id_parse(char *, struct ofpbuf *ofpacts) WARN_UNUSED_RESULT;
 void increment_table_id_format(const struct ofpact_increment_table_id *,

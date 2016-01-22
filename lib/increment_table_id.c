@@ -59,13 +59,16 @@ increment_table_id_from_openflow(const struct nx_action_increment_table_id *nic,
 
 /* Checks that 'incr_table_id' is a valid action on 'flow'.  Returns 0 always. */
 enum ofperr
-increment_table_id_check(const struct ofpact_increment_table_id *incr_table_id,
-                       const struct flow *flow)
+increment_table_id_check(const struct ofpact_increment_table_id *incr_table_id)
 {
     struct match match;
 
     fprintf(stderr, "increment_table_id_check called\n");
 
+    if((incr_table_id->counter_spec != TABLE_SPEC_INGRESS) ||
+       (incr_table_id->counter_spec != TABLE_SPEC_EGRESS)) {
+	return OFPERR_OFPBAC_BAD_SET_TYPE;
+    }
     match_init_catchall(&match);
 
     fprintf(stderr, "increment_table_id_check returning\n");
@@ -118,8 +121,7 @@ increment_table_counter(uint8_t counter_spec, uint8_t inc)
 
 /* Increments a global shared value for a table_id, and then returns the value */
 uint8_t
-increment_table_id_execute(const struct ofpact_increment_table_id *incr_table_id,
-                         struct flow *flow)
+increment_table_id_execute(const struct ofpact_increment_table_id *incr_table_id)
 {
     uint8_t orig;
 
@@ -131,16 +133,6 @@ increment_table_id_execute(const struct ofpact_increment_table_id *incr_table_id
     orig = increment_table_counter(incr_table_id->counter_spec, 1);
 
     fprintf(stderr, "increment_table_id_execute returning\n");
-    return orig;
-}
-
-uint8_t get_table_val()
-{
-    uint8_t orig;
-
-    // TODO:  Increment based on spec
-    orig = increment_table_counter(TABLE_SPEC_INGRESS, 0);
-
     return orig;
 }
 

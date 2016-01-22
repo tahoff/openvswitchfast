@@ -2195,13 +2195,12 @@ static uint64_t
 xlate_increment_table_id_action(
   struct xlate_ctx *ctx,
   const struct ofpact_increment_table_id *incr_table_id) {
-    return increment_table_id_execute(incr_table_id, &ctx->xin->flow);
+    return increment_table_id_execute(incr_table_id);
 }
 
 static void
 xlate_learn_delete_action(struct xlate_ctx *ctx,
                           const struct ofpact_learn_delete *learn,
-                          uint64_t atomic_cookie,
                           struct rule_dpif *rule)
 {
     uint64_t ofpacts_stub[1024 / 8];
@@ -2218,7 +2217,7 @@ xlate_learn_delete_action(struct xlate_ctx *ctx,
 
     ofpbuf_use_stub(&ofpacts, ofpacts_stub, sizeof ofpacts_stub);
     learn_delete_execute(learn, &ctx->xin->flow, &fm, &ofpacts,
-        atomic_cookie, rule ? &rule->up : NULL);
+			 rule ? &rule->up : NULL);
     ofproto_dpif_flow_mod(ctx->xbridge->ofproto, &fm);
     ofpbuf_uninit(&ofpacts);
 }
@@ -2284,7 +2283,6 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
     struct flow_wildcards *wc = &ctx->xout->wc;
     struct flow *flow = &ctx->xin->flow;
     const struct ofpact *a;
-    uint8_t atomic_table_id = get_table_counter_by_id(ctx->table_id);
     uint8_t resubmit_done;
     resubmit_done = 0;
 
@@ -2480,13 +2478,11 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
             break;
 
         case OFPACT_LEARN_DELETE:
-            xlate_learn_delete_action(ctx, ofpact_get_LEARN_DELETE(a),
-                atomic_table_id, ctx->xin->rule);
+            xlate_learn_delete_action(ctx, ofpact_get_LEARN_DELETE(a), ctx->xin->rule);
             break;
 
         case OFPACT_INCREMENT_TABLE_ID:
-            atomic_table_id =
-                xlate_increment_table_id_action(ctx, ofpact_get_INCREMENT_TABLE_ID(a));
+	    xlate_increment_table_id_action(ctx, ofpact_get_INCREMENT_TABLE_ID(a));
             break;
 
         case OFPACT_TIMEOUT_ACT:
@@ -2554,8 +2550,6 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
 	xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
 			   SIMON_TABLE_EGRESS_START, false);
     }
-
-    //atomic_table_id = get_table_val();
 
     if (ctx->table_id == 0 && !resubmit_done && ctx->rule) {
         // resubmit to table_id + 1

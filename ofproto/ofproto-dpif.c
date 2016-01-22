@@ -1331,7 +1331,7 @@ add_internal_flow(struct ofproto_dpif *ofproto, int id,
 static int
 add_internal_flows(struct ofproto_dpif *ofproto)
 {
-    struct ofpact_controller *controller;
+    /* struct ofpact_controller *controller; */
     struct ofpact_resubmit *resub;
     uint64_t ofpacts_stub[128 / 8];
     struct ofpbuf ofpacts;

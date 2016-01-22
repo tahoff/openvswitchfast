@@ -4414,8 +4414,8 @@ ofproto_rule_expire(struct rule *rule, uint8_t reason)
 void learn_delete_execute(const struct ofpact_learn_delete *learn,
         const struct flow *flow,
         struct ofputil_flow_mod *fm, struct ofpbuf *ofpacts,
-        uint8_t atomic_table, struct rule *rule) {
-    
+	struct rule *rule) {
+
     const struct ofpact_learn_spec *spec;
     struct ofpact_resubmit *resubmit;
 
@@ -4424,11 +4424,11 @@ void learn_delete_execute(const struct ofpact_learn_delete *learn,
     fm->cookie = htonll(learn->cookie);
     fm->cookie_mask = htonll(learn->cookie);
     fm->new_cookie = htonll(learn->cookie);
-    
-    if (learn->table_spec == DELETE_USING_ATOMIC_TABLE) {
-        fm->table_id = atomic_table;
-    } else if (learn->table_spec == DELETE_USING_RULE_TABLE && rule) {
-        fm->table_id = rule->table_id;
+
+    if (learn->table_spec == DELETE_USING_INGRESS_ATOMIC_TABLE) {
+        fm->table_id = get_table_counter_by_spec(TABLE_SPEC_INGRESS);
+    } else if (learn->table_spec == DELETE_USING_EGRESS_ATOMIC_TABLE) {
+	fm->table_id = get_table_counter_by_spec(TABLE_SPEC_EGRESS);
     } else {
         fm->table_id = learn->table_id;
     }
@@ -4641,8 +4641,6 @@ void timeout_act_execute(const struct ofpact_timeout_act *act,
     struct ofpact *a;
     struct ofputil_flow_mod fm;
     struct flow_wildcards wc;
-    uint8_t atomic_table_id;
-    atomic_table_id = get_table_val();
 
     wc.masks = *flow;
 
@@ -4703,15 +4701,14 @@ void timeout_act_execute(const struct ofpact_timeout_act *act,
                     // Populate fm with the learn attributes
                     //ovs_mutex_unlock(&ofproto_mutex);
                     learn_delete_execute(ofpact_get_LEARN_DELETE(a), flow,
-                         &fm, &ofpacts_buf, atomic_table_id, rule);
+                         &fm, &ofpacts_buf, rule);
 
                     // ofproto_flow_mod(struct ofproto *ofproto, struct ofputil_flow_mod *fm)
                     ofproto_flow_mod(ofproto, &fm);
                     ofpbuf_uninit(&ofpacts_buf);
                     break;
                 case OFPACT_INCREMENT_TABLE_ID:
-                    atomic_table_id = increment_table_id_execute(
-                        ofpact_get_INCREMENT_TABLE_ID(a), flow);
+                    increment_table_id_execute(ofpact_get_INCREMENT_TABLE_ID(a));
                     break;
                 case OFPACT_LEARN_LEARN:
                     ofpbuf_use_stub(&ofpacts_buf, ofpacts_stub, sizeof ofpacts_stub);
