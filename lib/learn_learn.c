@@ -51,25 +51,28 @@ get_be16(const void **pp)
 }
 
 static char *
-get_last_char(char *c, char *str) {
-    char *last_instance;
+get_matching_bracket(char *str) {
     char *instance;
-    instance = strstr(str, c);
-    last_instance = instance;
+    int count;
+    count = 0;
 
-    fprintf(stderr, "get_last_char %p %s %s\n", last_instance, c, str);
+    fprintf(stderr, "get_matching_bracket %s\n", str);
 
-    if (!last_instance) {
-        fprintf(stderr, "early null\n");
-        return NULL;
-    } else {
-        while ((instance = strstr(instance, c)) == NULL) {
-            fprintf(stderr, "%p\n", last_instance);
-            last_instance = instance;
+    instance = str;
+
+    while (*instance != '\0') {
+        if (*instance == '{') {
+            count++;
+        } else if (*instance == '}') {
+            count--;
+            if (count == 0) {
+                return instance;
+            }
         }
-
-        return last_instance;
+        instance++;
     }
+
+    return NULL; 
 }
 
 static ovs_be32
@@ -898,10 +901,6 @@ learn_learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
     act_str = strstr(orig, "actions");
     end_act_str = NULL;
     if (act_str) {
-        char bracket[2];
-        bracket[0] = '}';
-        bracket[1] = '\0';
-
         act_str = strchr(act_str + 1, '=');
         if (!act_str) {
             return xstrdup("Must specify action");
@@ -911,14 +910,15 @@ learn_learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
         if (!act_str) {
             return xstrdup("learn_learn requires actions to be bound by '{...}'");
         }
+        end_act_str = get_matching_bracket(act_str);
+        
         act_str = act_str + 1;
 
         // get_last_char(char *c, char *str)
-        end_act_str = get_last_char(bracket, act_str);
         if (!end_act_str) {
             return xstrdup("learn_learn requires actions to be bound by '{...}' 2}");
         }
-        end_act_str = end_act_str - 1;
+        //end_act_str = end_act_str - 1;
     }
 
     struct ofpbuf learn_ofpacts_buf;
