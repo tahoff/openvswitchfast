@@ -1708,9 +1708,7 @@ xlate_table_action(struct xlate_ctx *ctx,
         fprintf(stderr, "----- xlate_table_action %u %u ", ctx->table_id, table_id);
         ctx->table_id = table_id;
         fprintf(stderr, "%u-----\n", ctx->table_id);
-	VLOG_WARN("Performing table action for table_id:  %"PRIu8", in_port:  %"PRIx16, table_id, in_port);
-	/* VLOG_WARN("Performing table action for table %"PRIu8" -> %"PRIu8 ", in_port:  %"PRIx16 ", old_in_port:  %"PRIx16, */
-	/* 	  table_id, ctx->table_id, in_port, old_in_port); */
+	VLOG_DBG("Performing table action for table_id:  %"PRIu8", in_port:  %"PRIx16, table_id, in_port);
 
         /* Look up a flow with 'in_port' as the input port.  Then restore the
          * original input port (otherwise OFPP_NORMAL and OFPP_IN_PORT will
@@ -2003,8 +2001,8 @@ xlate_output_action(struct xlate_ctx *ctx,
         xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
                            0, may_packet_in);
         break;
-    case SIMON_OFPP_TABLE_EGRESS:
-	VLOG_WARN("Sending flow to egress tables:  %"PRIx16, port);
+    case OFPP_EGRESS:
+	VLOG_INFO("Sending flow to egress tables, out_port: 0x%"PRIx16, port);
         xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
                            SIMON_TABLE_EGRESS_START, may_packet_in);
 	break;
@@ -2117,7 +2115,7 @@ slave_enabled_cb(ofp_port_t ofp_port, void *xbridge_)
     switch (ofp_port) {
     case OFPP_IN_PORT:
     case OFPP_TABLE:
-    case SIMON_OFPP_TABLE_EGRESS:
+    case OFPP_EGRESS:
     case OFPP_NORMAL:
     case OFPP_FLOOD:
     case OFPP_ALL:
@@ -2173,7 +2171,6 @@ xlate_learn_action(struct xlate_ctx *ctx,
 static void
 xlate_learn_learn_action(struct xlate_ctx *ctx,
                          const struct ofpact_learn_learn *learn,
-                         uint8_t atomic_table_id,
                          struct rule_dpif *rule)
 {
     uint64_t ofpacts_stub[1024 / 8];
@@ -2189,7 +2186,7 @@ xlate_learn_learn_action(struct xlate_ctx *ctx,
 
     ofpbuf_use_stub(&ofpacts, ofpacts_stub, sizeof ofpacts_stub);
     learn_learn_execute(learn, &ctx->xin->flow, &fm, &ofpacts,
-        atomic_table_id, rule ? &rule->up : NULL);
+			rule ? &rule->up : NULL);
     ofproto_dpif_flow_mod(ctx->xbridge->ofproto, &fm);
     ofpbuf_uninit(&ofpacts);
 }
@@ -2287,7 +2284,7 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
     struct flow_wildcards *wc = &ctx->xout->wc;
     struct flow *flow = &ctx->xin->flow;
     const struct ofpact *a;
-    uint8_t atomic_table_id = get_table_val();
+    uint8_t atomic_table_id = get_table_counter_by_id(ctx->table_id);
     uint8_t resubmit_done;
     resubmit_done = 0;
 
@@ -2479,8 +2476,7 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
             break;
 
         case OFPACT_LEARN_LEARN:
-            xlate_learn_learn_action(ctx, ofpact_get_LEARN_LEARN(a),
-                atomic_table_id, ctx->xin->rule);
+            xlate_learn_learn_action(ctx, ofpact_get_LEARN_LEARN(a), ctx->xin->rule);
             break;
 
         case OFPACT_LEARN_DELETE:

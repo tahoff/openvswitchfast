@@ -4504,7 +4504,7 @@ ofputil_check_output_port(ofp_port_t port, ofp_port_t max_ports)
     switch (port) {
     case OFPP_IN_PORT:
     case OFPP_TABLE:
-    case SIMON_OFPP_TABLE_EGRESS:
+    case OFPP_EGRESS:
     case OFPP_NORMAL:
     case OFPP_FLOOD:
     case OFPP_ALL:
@@ -4517,6 +4517,7 @@ ofputil_check_output_port(ofp_port_t port, ofp_port_t max_ports)
         if (ofp_to_u16(port) < ofp_to_u16(max_ports)) {
             return 0;
         }
+	VLOG_WARN("Rejecting output port %"PRIx16", max_ports:  %"PRIx16, port, max_ports);
         return OFPERR_OFPBAC_BAD_OUT_PORT;
     }
 }

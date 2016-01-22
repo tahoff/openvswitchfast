@@ -958,9 +958,13 @@ learn_learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
         } else if (!strcmp(name, "learn_on_timeout")) {
             learn->learn_on_timeout = atoi(value);
         } else if (!strcmp(name, "use_atomic_table")) {
-            if (atoi(value) != 0) {
-                learn->table_spec = LEARN_USING_ATOMIC_TABLE;
-            }
+	    if(!strcmp(value, "INGRESS")) {
+		learn->table_spec = LEARN_USING_INGRESS_ATOMIC_TABLE;
+	    } else if(!strcmp(value, "EGRESS")) {
+		learn->table_spec = LEARN_USING_EGRESS_ATOMIC_TABLE;
+	    } else {
+		return xasprintf("%s: Invalid counter spec, must be 'INGRESS' or 'EGRESS'", orig);
+	    }
         } else if (!strcmp(name, "use_rule_table")) {
             if (atoi(value) != 0) {
                 learn->table_spec = LEARN_USING_RULE_TABLE;
@@ -1151,16 +1155,18 @@ learn_learn_format(const struct ofpact_learn_learn *learn, struct ds *s)
 
     ds_put_format(s, ",learn_on_timeout=%"PRIu8, learn->learn_on_timeout);
 
-    if (learn->table_spec == LEARN_USING_ATOMIC_TABLE) {
-        ds_put_cstr(s, ",table_spec=LEARN_USING_ATOMIC_TABLE");
+    if (learn->table_spec == LEARN_USING_INGRESS_ATOMIC_TABLE) {
+        ds_put_cstr(s, ",table_spec=LEARN_USING_INGRESS_ATOMIC_TABLE");
+    } else if (learn->table_spec == LEARN_USING_EGRESS_ATOMIC_TABLE) {
+	ds_put_cstr(s, ",table_spec=LEARN_USING_EGRESS_ATOMIC_TABLE");
     } else if (learn->table_spec == LEARN_USING_RULE_TABLE) {
         ds_put_cstr(s, ",table_spec=LEARN_USING_RULE_TABLE");
     }
-    
+
     spec = (const struct ofpact_learn_spec *) learn->data;
     spec_end = spec + learn->n_specs;
 
-    for (spec = (const struct ofpact_learn_spec *) learn->data; 
+    for (spec = (const struct ofpact_learn_spec *) learn->data;
          spec < spec_end; spec++) {
         ds_put_char(s, ',');
 

@@ -20,6 +20,8 @@
 			     (id < 254))
 
 
+#define SIMON_USE_OF_OUTPUT_EGRESS 1
+
 // Register definitions
 #define SIMON_OUTPUT_STATUS_REG (1)
 
@@ -27,6 +29,6 @@
 #define SIMON_OUTPUT_STATUS_CONTROLLER (OFPP_CONTROLLER)
 #define SIMON_OUTPUT_STATUS_DROP       (OFPP_NONE)
 
-#define SIMON_OFPP_TABLE_EGRESS        OFP_PORT_C(0x42)
+
 #define SIMON_OFP_IN_XID_MASK          (0xbe000000)
 #endif

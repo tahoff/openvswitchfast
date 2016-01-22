@@ -18,8 +18,10 @@ struct nx_action_learn_learn;
  * See include/openflow/nicira-ext.h for NXAST_LEARN_LEARN specification.
  */
 
-#define LEARN_USING_ATOMIC_TABLE  1
-#define LEARN_USING_RULE_TABLE  2
+//#define LEARN_USING_ATOMIC_TABLE  1
+#define LEARN_USING_RULE_TABLE            2
+#define LEARN_USING_INGRESS_ATOMIC_TABLE  3
+#define LEARN_USING_EGRESS_ATOMIC_TABLE   4
 
 void populate_deferral_values(struct ofpact_learn_learn *act,
                               const struct flow *flow);

@@ -159,6 +159,11 @@ uint8_t get_table_counter_by_id(uint8_t table_id)
     return ret;
 }
 
+uint8_t get_table_counter_by_spec(uint8_t table_spec)
+{
+    return increment_table_counter(table_spec, 0);
+}
+
 /* Returns NULL if successful, otherwise a malloc()'d string describing the
  * error.  The caller is responsible for freeing the returned string. */
 static char * WARN_UNUSED_RESULT

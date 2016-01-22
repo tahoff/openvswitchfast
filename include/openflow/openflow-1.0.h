@@ -28,11 +28,20 @@
  * 0xff00...0xfff7  "reserved" but not assigned a meaning by OpenFlow 1.0
  * 0xfff8...0xffff  "reserved" OFPP_* ports with assigned meanings
  */
+#define SIMON_USE_EGRESS_PORT 1
 
 /* Ranges. */
 #define OFPP_MAX        OFP_PORT_C(0xff00) /* Max # of switch ports. */
 #define OFPP_FIRST_RESV OFP_PORT_C(0xfff8) /* First assigned reserved port. */
 #define OFPP_LAST_RESV  OFP_PORT_C(0xffff) /* Last assigned reserved port. */
+
+/*
+ * To create an egress "port," we need to create a port number outside the normal
+ * reserved port space, or the proxy will complain.
+ */
+#ifdef SIMON_USE_EGRESS_PORT
+#define OFPP_EGRESS     OFP_PORT_C(0xfeef) /* Packet should be sent to egress tables */
+#endif
 
 /* Reserved output "ports". */
 #define OFPP_IN_PORT    OFP_PORT_C(0xfff8) /* Where the packet came in. */

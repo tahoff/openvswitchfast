@@ -450,8 +450,7 @@ void learn_delete_execute(const struct ofpact_learn_delete *learn,
         struct ofputil_flow_mod *fm, struct ofpbuf *ofpacts,
         uint8_t atomic_table_id, struct rule *rule);
 void learn_learn_execute(const struct ofpact_learn_learn *, const struct flow *,
-        struct ofputil_flow_mod *, struct ofpbuf *ofpacts,
-        uint8_t atomic_table_id, struct rule *rule);
+        struct ofputil_flow_mod *, struct ofpbuf *ofpacts, struct rule *rule);
 
 #ifdef  __cplusplus
 }

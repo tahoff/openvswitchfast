@@ -39,9 +39,10 @@ uint8_t increment_table_id_execute(
 char *increment_table_id_parse(char *, struct ofpbuf *ofpacts) WARN_UNUSED_RESULT;
 void increment_table_id_format(const struct ofpact_increment_table_id *,
                                struct ds *);
-uint8_t get_table_val(void);
+//uint8_t get_table_val(void);
 
 uint8_t get_table_counter_by_id(uint8_t table_id);
 
+uint8_t get_table_counter_by_spec(uint8_t table_spec);
 
 #endif /* increment_table_id.h */
