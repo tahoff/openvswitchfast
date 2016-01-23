@@ -65,7 +65,7 @@ increment_table_id_check(const struct ofpact_increment_table_id *incr_table_id)
 
     fprintf(stderr, "increment_table_id_check called\n");
 
-    if((incr_table_id->counter_spec != TABLE_SPEC_INGRESS) ||
+    if((incr_table_id->counter_spec != TABLE_SPEC_INGRESS) &&
        (incr_table_id->counter_spec != TABLE_SPEC_EGRESS)) {
 	return OFPERR_OFPBAC_BAD_SET_TYPE;
     }
