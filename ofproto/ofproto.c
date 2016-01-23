@@ -4705,7 +4705,7 @@ void timeout_act_execute(const struct ofpact_timeout_act *act,
                     ofpbuf_use_stub(&ofpacts_buf, ofpacts_stub, sizeof ofpacts_stub);
 
                     // Create flow_mod
-                    learn = ofpact_get_LEARN_LEARN(a);
+                    //learn = ofpact_get_LEARN_LEARN(a);
 
                     //learn_mask(learn, &wc);
                     
