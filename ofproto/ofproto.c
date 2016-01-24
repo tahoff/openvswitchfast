@@ -4428,7 +4428,7 @@ void learn_delete_execute(const struct ofpact_learn_delete *learn,
     if (learn->table_spec == DELETE_USING_INGRESS_ATOMIC_TABLE) {
         fm->table_id = get_table_counter_by_spec(TABLE_SPEC_INGRESS);
     } else if (learn->table_spec == DELETE_USING_EGRESS_ATOMIC_TABLE) {
-	fm->table_id = get_table_counter_by_spec(TABLE_SPEC_EGRESS);
+	fm->table_id = SIMON_TABLE_EGRESS_START + get_table_counter_by_spec(TABLE_SPEC_EGRESS);
     } else {
         fm->table_id = learn->table_id;
     }
@@ -4536,7 +4536,7 @@ learn_learn_execute(const struct ofpact_learn_learn *learn,
     if (learn->table_spec == LEARN_USING_INGRESS_ATOMIC_TABLE) {
         fm->table_id = get_table_counter_by_spec(TABLE_SPEC_INGRESS);
     } else if (learn->table_spec == LEARN_USING_EGRESS_ATOMIC_TABLE) {
-	fm->table_id = get_table_counter_by_spec(TABLE_SPEC_EGRESS);
+	fm->table_id = SIMON_TABLE_EGRESS_START + get_table_counter_by_spec(TABLE_SPEC_EGRESS);
     } else if (learn->table_spec == LEARN_USING_RULE_TABLE && rule) {
         fm->table_id = rule->table_id;
     } else {

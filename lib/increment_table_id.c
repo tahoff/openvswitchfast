@@ -101,14 +101,14 @@ increment_table_counter(uint8_t counter_spec, uint8_t inc)
 	atomic_add(&atomic_table_id_ingress, inc, &orig);
 
 	if(inc != 0) {
-	    VLOG_WARN("Incrementing ingress table id from:  %"PRIu8 ", inc:  %"PRIu8, orig, inc);
+	    VLOG_DBG("Incrementing ingress table id from:  %"PRIu8 ", inc:  %"PRIu8, orig, inc);
 	}
 	break;
     case TABLE_SPEC_EGRESS:
 	atomic_add(&atomic_table_id_egress, inc, &orig);
 
 	if(inc != 0) {
-	    VLOG_WARN("Incrementing egress table id from:  %"PRIu8 ", inc:  %"PRIu8, orig, inc);
+	    VLOG_DBG("Incrementing egress table id from:  %"PRIu8 ", inc:  %"PRIu8, orig, inc);
 	}
 	break;
     default:

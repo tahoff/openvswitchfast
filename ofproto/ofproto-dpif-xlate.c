@@ -1749,25 +1749,27 @@ xlate_table_action(struct xlate_ctx *ctx,
             rule_dpif_unref(rule);
         }
 
+	/* Automatic resubmit:  submit to next populated ingress or egress table. */
 	if (TABLE_IS_INGRESS(table_id)) {
 	    uint8_t next_table_id;
-
 	    counter_val = get_table_counter_by_id(table_id);
 	    next_table_id = (table_id < counter_val) ? table_id + 1 :
 		                                               SIMON_TABLE_PRODUCTION_START;
 	    xlate_table_action(ctx, in_port, next_table_id, may_packet_in);
+
 	} else if (TABLE_IS_PRODUCTION(table_id)) {
-	    // How do we know if we're at the end of the production tables?  We don't.
+	    /* How do we know if we're at the end of the production tables?  We don't.
+	     * Instead, xlate_table_egress_action will add a resubmit when a terminal
+	     * action (output, controller, etc.) is evaluated. */
 	} else if (TABLE_IS_EGRESS(table_id)) {
 	    uint8_t egress_table_id;
-
 	    egress_table_id = table_id - SIMON_TABLE_EGRESS_START;
 	    counter_val = get_table_counter_by_id(table_id);
 
 	    if(egress_table_id < counter_val) {
 		xlate_table_action(ctx, in_port, table_id + 1, may_packet_in);
 	    }
-	    // If the table ID exceeds the counter value, we're done.
+	    /* If the table ID exceeds the counter value, we're done. */
 	} else {
 	    VLOG_WARN("Table ID not in any block:  %"PRIu8, table_id);
 	}
@@ -2002,7 +2004,7 @@ xlate_output_action(struct xlate_ctx *ctx,
                            0, may_packet_in);
         break;
     case OFPP_EGRESS:
-	VLOG_INFO("Sending flow to egress tables, out_port: 0x%"PRIx16, port);
+	VLOG_DBG("Sending flow to egress tables, out_port: 0x%"PRIx16, port);
         xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
                            SIMON_TABLE_EGRESS_START, may_packet_in);
 	break;
@@ -2195,6 +2197,20 @@ static uint64_t
 xlate_increment_table_id_action(
   struct xlate_ctx *ctx,
   const struct ofpact_increment_table_id *incr_table_id) {
+
+    uint8_t table_val = get_table_counter_by_spec(incr_table_id->counter_spec);
+
+    // Don't increment if we're not processing a packet.
+    if(!ctx->xin->may_learn) {
+	return;
+    }
+
+    VLOG_DBG("Executing increment_table_id, table_id:  %"PRIu8", spec:  %s, val:  %2"PRIu8", nw_src:  0x%"PRIx32", recurse: %"PRIu32,
+	     ctx->table_id,
+	     (incr_table_id->counter_spec == TABLE_SPEC_INGRESS) ? "INGRESS" : "EGRESS",
+	     table_val,
+	     ctx->xin->flow.nw_src,
+	     ctx->recurse);
     return increment_table_id_execute(incr_table_id);
 }
 
@@ -2543,6 +2559,7 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
 
     /* If the action set is empty, we have a drop "action", so resubmit to the egress tables */
     if((TABLE_IS_PRODUCTION(ctx->table_id) && (ofpacts_len == 0))) {
+
 	// Load the current output port into a register
 	ctx->xin->flow.regs[SIMON_OUTPUT_STATUS_REG] = SIMON_OUTPUT_STATUS_DROP;
 
