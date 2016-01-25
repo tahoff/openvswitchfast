@@ -2972,13 +2972,13 @@ ofputil_packet_in_to_match(const struct ofputil_packet_in *pin,
     if (pin->fmd.metadata != htonll(0)) {
         match_set_metadata(match, pin->fmd.metadata);
     }
-
+#if 0
     for (i = 0; i < FLOW_N_REGS; i++) {
         if (pin->fmd.regs[i]) {
             match_set_reg(match, i, pin->fmd.regs[i]);
         }
     }
-
+#endif
     if (pin->fmd.pkt_mark != 0) {
         match_set_pkt_mark(match, pin->fmd.pkt_mark);
     }
