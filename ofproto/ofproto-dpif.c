@@ -271,8 +271,8 @@ static void facet_flush_stats(struct facet *);
 
 static void facet_reset_counters(struct facet *);
 static void flow_push_stats(struct ofproto_dpif *, struct flow *,
-                            struct dpif_flow_stats *, bool may_learn);
-static void facet_push_stats(struct facet *, bool may_learn);
+                            struct dpif_flow_stats *, bool may_learn, bool may_increment);
+static void facet_push_stats(struct facet *, bool may_learn, bool may_increment);
 static void facet_learn(struct facet *);
 static void facet_account(struct facet *);
 static void push_all_stats(void);
@@ -4025,7 +4025,7 @@ facet_learn(struct facet *facet)
         return;
     }
 
-    facet_push_stats(facet, true);
+    facet_push_stats(facet, true, false);
 }
 
 static void
@@ -4121,7 +4121,7 @@ facet_flush_stats(struct facet *facet)
         ovs_assert(!subfacet->dp_packet_count);
     }
 
-    facet_push_stats(facet, false);
+    facet_push_stats(facet, false, false);
     if (facet->accounted_bytes < facet->byte_count) {
         facet_account(facet);
         facet->accounted_bytes = facet->byte_count;
@@ -4343,7 +4343,7 @@ facet_reset_counters(struct facet *facet)
 
 static void
 flow_push_stats(struct ofproto_dpif *ofproto, struct flow *flow,
-                struct dpif_flow_stats *stats, bool may_learn)
+                struct dpif_flow_stats *stats, bool may_learn, bool may_increment)
 {
     struct ofport_dpif *in_port;
     struct xlate_in xin;
@@ -4356,11 +4356,12 @@ flow_push_stats(struct ofproto_dpif *ofproto, struct flow *flow,
     xlate_in_init(&xin, ofproto, flow, NULL, stats->tcp_flags, NULL);
     xin.resubmit_stats = stats;
     xin.may_learn = may_learn;
+    xin.may_increment = may_increment;
     xlate_actions_for_side_effects(&xin);
 }
 
 static void
-facet_push_stats(struct facet *facet, bool may_learn)
+facet_push_stats(struct facet *facet, bool may_learn, bool may_increment)
 {
     struct dpif_flow_stats stats;
 
@@ -4383,7 +4384,7 @@ facet_push_stats(struct facet *facet, bool may_learn)
         netflow_flow_update_flags(&facet->nf_flow, facet->tcp_flags);
         mirror_update_stats(facet->ofproto->mbridge, facet->xout.mirrors,
                             stats.n_packets, stats.n_bytes);
-        flow_push_stats(facet->ofproto, &facet->flow, &stats, may_learn);
+        flow_push_stats(facet->ofproto, &facet->flow, &stats, may_learn, may_increment);
     }
 }
 
@@ -4404,7 +4405,7 @@ push_all_stats__(bool run_fast)
         ovs_rwlock_rdlock(&ofproto->facets.rwlock);
         cls_cursor_init(&cursor, &ofproto->facets, NULL);
         CLS_CURSOR_FOR_EACH (facet, cr, &cursor) {
-            facet_push_stats(facet, false);
+            facet_push_stats(facet, false, false);
             if (run_fast) {
                 run_fast_rl();
             }

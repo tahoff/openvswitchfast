@@ -2193,15 +2193,26 @@ xlate_learn_learn_action(struct xlate_ctx *ctx,
     ofpbuf_uninit(&ofpacts);
 }
 
-static uint64_t
+static void
 xlate_increment_table_id_action(
   struct xlate_ctx *ctx,
   const struct ofpact_increment_table_id *incr_table_id) {
 
     uint8_t table_val = get_table_counter_by_spec(incr_table_id->counter_spec);
 
-    // Don't increment if we're not processing a packet.
-    if(!ctx->xin->may_learn) {
+    /*
+     * Indicate that this action requires per-packet processing so its result cannot
+     * be cached.  Adding has_learn doesn't seem to be enough here, so instead, set a
+     * "slow path reason" for this packet.  The CONTROLLER slow path reason is the only one
+     * that doesn't incur any additional operations (like for bundle or STP).
+     * TODO:  Determine if this is the least impactful way to handle this situation; if so
+     * add another slow path reason.
+     */
+    ctx->xout->has_learn = true;
+    ctx->xout->slow = SLOW_CONTROLLER;
+
+    /* Don't increment if we're not processing a packet. */
+    if(!ctx->xin->may_increment) {
 	return;
     }
 
@@ -2211,7 +2222,7 @@ xlate_increment_table_id_action(
 	     table_val,
 	     ctx->xin->flow.nw_src,
 	     ctx->recurse);
-    return increment_table_id_execute(incr_table_id);
+    increment_table_id_execute(incr_table_id);
 }
 
 static void
@@ -2239,8 +2250,8 @@ xlate_learn_delete_action(struct xlate_ctx *ctx,
 }
 
 static void
-xlate_timeout_act_action(struct xlate_ctx *ctx,
-                         const struct ofpact_timeout_act *act) {
+xlate_timeout_act_action(struct xlate_ctx *ctx OVS_UNUSED,
+                         const struct ofpact_timeout_act *act OVS_UNUSED) {
     return;
 }
 
@@ -2302,8 +2313,8 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
     uint8_t resubmit_done;
     resubmit_done = 0;
 
-    fprintf(stderr, "do_xlate_actions %u %u %i\n",
-        ctx->table_id, ctx->xin->flow.in_port,
+    fprintf(stderr, "do_xlate_actions %u %"PRIu16 " %zu\n",
+        ctx->table_id, ctx->xin->flow.in_port.ofp_port,
         ofpacts_len);
 
     OFPACT_FOR_EACH (a, ofpacts, ofpacts_len) {
@@ -2665,6 +2676,7 @@ xlate_in_init(struct xlate_in *xin, struct ofproto_dpif *ofproto,
     xin->flow = *flow;
     xin->packet = packet;
     xin->may_learn = packet != NULL;
+    xin->may_increment = packet != NULL;
     xin->rule = rule;
     xin->ofpacts = NULL;
     xin->ofpacts_len = 0;
