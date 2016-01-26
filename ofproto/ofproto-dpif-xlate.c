@@ -218,7 +218,7 @@ static bool dscp_from_skb_priority(const struct xport *, uint32_t skb_priority,
                                    uint8_t *dscp);
 
 static void do_xlate_egress_action(const struct ofpact *a, struct xlate_ctx *ctx);
-
+static void do_egress_compare(struct xlate_ctx *ctx);
 
 void
 xlate_ofproto_set(struct ofproto_dpif *ofproto, const char *name,
@@ -1710,6 +1710,10 @@ xlate_table_action(struct xlate_ctx *ctx,
         fprintf(stderr, "%u-----\n", ctx->table_id);
 	VLOG_DBG("Performing table action for table_id:  %"PRIu8", in_port:  %"PRIx16, table_id, in_port);
 
+	if(ctx->table_id == SIMON_TABLE_EGRESS_START) {
+	    do_egress_compare(ctx);
+	}
+
         /* Look up a flow with 'in_port' as the input port.  Then restore the
          * original input port (otherwise OFPP_NORMAL and OFPP_IN_PORT will
          * have surprising behavior). */
@@ -1783,6 +1787,16 @@ xlate_table_action(struct xlate_ctx *ctx,
                     MAX_RESUBMIT_RECURSION);
     }
 }
+
+
+static void
+do_egress_compare(struct xlate_ctx *ctx)
+{
+    struct flow *flow = &ctx->xin->flow;
+    VLOG_WARN("Performing egress compare, reg:  %"PRIx32",  nw_src:  %"PRIx32, flow->regs[8], ntohl(flow->nw_src));
+    flow->regs[8] = (flow->regs[8] == ntohl(flow->nw_src)) ? 1 : 0;
+}
+
 
 static void
 xlate_ofpact_resubmit(struct xlate_ctx *ctx,
@@ -2591,6 +2605,7 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
 
 
 }
+
 
 static void
 do_xlate_egress_action(const struct ofpact *a, struct xlate_ctx *ctx)
