@@ -4403,7 +4403,7 @@ ofproto_rule_expire(struct rule *rule, uint8_t reason)
 void learn_delete_execute(const struct ofpact_learn_delete *learn,
         const struct flow *flow,
         struct ofputil_flow_mod *fm, struct ofpbuf *ofpacts,
-        uint8_t atomic_table, struct rule *rule) {
+        uint8_t atomic_table, uint8_t rule_table) {
     
     const struct ofpact_learn_spec *spec;
     struct ofpact_resubmit *resubmit;
@@ -4416,8 +4416,8 @@ void learn_delete_execute(const struct ofpact_learn_delete *learn,
     
     if (learn->table_spec == DELETE_USING_ATOMIC_TABLE) {
         fm->table_id = atomic_table;
-    } else if (learn->table_spec == DELETE_USING_RULE_TABLE && rule) {
-        fm->table_id = rule->table_id;
+    } else if (learn->table_spec == DELETE_USING_RULE_TABLE) {
+        fm->table_id = rule_table;
     } else {
         fm->table_id = learn->table_id;
     }
@@ -4503,7 +4503,7 @@ void
 learn_learn_execute(const struct ofpact_learn_learn *learn,
         const struct flow *flow, struct ofputil_flow_mod *fm,
         struct ofpbuf *ofpacts,
-        uint8_t atomic_table, struct rule *rule)
+        uint8_t atomic_table, uint8_t rule_table)
 {
     fprintf(stderr, "learn_learn_execute\n");
     //if (learn->learn_on_timeout) {
@@ -4525,8 +4525,8 @@ learn_learn_execute(const struct ofpact_learn_learn *learn,
 
     if (learn->table_spec == LEARN_USING_ATOMIC_TABLE) {
         fm->table_id = atomic_table;
-    } else if (learn->table_spec == LEARN_USING_RULE_TABLE && rule) {
-        fm->table_id = rule->table_id;
+    } else if (learn->table_spec == LEARN_USING_RULE_TABLE) {
+        fm->table_id = rule_table;
     } else {
         fm->table_id = learn->table_id;
     }
@@ -4691,7 +4691,7 @@ void timeout_act_execute(const struct ofpact_timeout_act *act,
                     // Populate fm with the learn attributes
                     //ovs_mutex_unlock(&ofproto_mutex);
                     learn_delete_execute(ofpact_get_LEARN_DELETE(a), flow,
-                         &fm, &ofpacts_buf, atomic_table_id, rule);
+                         &fm, &ofpacts_buf, atomic_table_id, rule->table_id);
 
                     // ofproto_flow_mod(struct ofproto *ofproto, struct ofputil_flow_mod *fm)
                     ofproto_flow_mod(ofproto, &fm);
@@ -4712,7 +4712,7 @@ void timeout_act_execute(const struct ofpact_timeout_act *act,
                     // Populate fm with the learn attributes
                     //ovs_mutex_unlock(&ofproto_mutex);
                     learn_learn_execute(ofpact_get_LEARN_LEARN(a), flow, &fm,
-                                        &ofpacts_buf, atomic_table_id, rule);
+                                        &ofpacts_buf, atomic_table_id, rule->table_id);
                     
                     // ofproto_flow_mod(struct ofproto *ofproto, struct ofputil_flow_mod *fm)
                     ofproto_flow_mod(ofproto, &fm);

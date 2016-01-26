@@ -2156,7 +2156,7 @@ xlate_learn_learn_action(struct xlate_ctx *ctx,
 
     ofpbuf_use_stub(&ofpacts, ofpacts_stub, sizeof ofpacts_stub);
     learn_learn_execute(learn, &ctx->xin->flow, &fm, &ofpacts,
-        atomic_table_id, rule ? &rule->up : NULL);
+        atomic_table_id, ctx->table_id);
     ofproto_dpif_flow_mod(ctx->xbridge->ofproto, &fm);
     ofpbuf_uninit(&ofpacts);
 }
@@ -2171,7 +2171,7 @@ xlate_increment_table_id_action(
 static void
 xlate_learn_delete_action(struct xlate_ctx *ctx,
                           const struct ofpact_learn_delete *learn,
-                          uint64_t atomic_cookie,
+                          uint8_t atomic_table,
                           struct rule_dpif *rule)
 {
     uint64_t ofpacts_stub[1024 / 8];
@@ -2188,7 +2188,7 @@ xlate_learn_delete_action(struct xlate_ctx *ctx,
 
     ofpbuf_use_stub(&ofpacts, ofpacts_stub, sizeof ofpacts_stub);
     learn_delete_execute(learn, &ctx->xin->flow, &fm, &ofpacts,
-        atomic_cookie, rule ? &rule->up : NULL);
+        atomic_table, ctx->table_id);
     ofproto_dpif_flow_mod(ctx->xbridge->ofproto, &fm);
     ofpbuf_uninit(&ofpacts);
 }
