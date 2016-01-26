@@ -1310,7 +1310,7 @@ ofpact_check__(const struct ofpact *a, struct flow *flow, ofp_port_t max_ports,
         return learn_delete_check(ofpact_get_LEARN_DELETE(a), flow);
 
     case OFPACT_INCREMENT_TABLE_ID:
-        return increment_table_id_check(ofpact_get_INCREMENT_TABLE_ID(a), flow);
+        return increment_table_id_check(ofpact_get_INCREMENT_TABLE_ID(a));
 
     case OFPACT_TIMEOUT_ACT:
         return timeout_act_check(ofpact_get_TIMEOUT_ACT(a), flow);

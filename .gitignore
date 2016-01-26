@@ -69,4 +69,14 @@ OvsDpInterface.h
 /.vagrant/
 testsuite.tmp.orig
 
-rebuild_ovs
+/.metadata/
+/GPATH
+/GRTAGS
+/GTAGS
+/python/ovs/version.py
+/rhel/openvswitch-fedora.spec
+/rhel/openvswitch-kmod-fedora.spec
+/rhel/openvswitch-kmod-rhel6.spec
+rhel/openvswitch.spec
+/xenserver/openvswitch-xen.spec
+

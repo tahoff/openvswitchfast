@@ -43,6 +43,8 @@
 #include "type-props.h"
 #include "vlog.h"
 
+#include "simon.h"
+
 VLOG_DEFINE_THIS_MODULE(ofp_util);
 
 /* Rate limit for OpenFlow message parse errors.  These always indicate a bug
@@ -2970,13 +2972,13 @@ ofputil_packet_in_to_match(const struct ofputil_packet_in *pin,
     if (pin->fmd.metadata != htonll(0)) {
         match_set_metadata(match, pin->fmd.metadata);
     }
-
+#if 0
     for (i = 0; i < FLOW_N_REGS; i++) {
         if (pin->fmd.regs[i]) {
             match_set_reg(match, i, pin->fmd.regs[i]);
         }
     }
-
+#endif
     if (pin->fmd.pkt_mark != 0) {
         match_set_pkt_mark(match, pin->fmd.pkt_mark);
     }
@@ -4502,6 +4504,7 @@ ofputil_check_output_port(ofp_port_t port, ofp_port_t max_ports)
     switch (port) {
     case OFPP_IN_PORT:
     case OFPP_TABLE:
+    case OFPP_EGRESS:
     case OFPP_NORMAL:
     case OFPP_FLOOD:
     case OFPP_ALL:
@@ -4514,6 +4517,7 @@ ofputil_check_output_port(ofp_port_t port, ofp_port_t max_ports)
         if (ofp_to_u16(port) < ofp_to_u16(max_ports)) {
             return 0;
         }
+	VLOG_WARN("Rejecting output port %"PRIx16", max_ports:  %"PRIx16, port, max_ports);
         return OFPERR_OFPBAC_BAD_OUT_PORT;
     }
 }

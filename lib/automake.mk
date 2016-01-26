@@ -69,8 +69,8 @@ lib_libopenvswitch_a_SOURCES = \
 	lib/hmapx.c \
 	lib/hmapx.h \
 	lib/increment_table_id.c \
-    lib/increment_table_id.h \
-    lib/jhash.c \
+        lib/increment_table_id.h \
+        lib/jhash.c \
 	lib/jhash.h \
 	lib/json.c \
 	lib/json.h \
@@ -179,6 +179,7 @@ lib_libopenvswitch_a_SOURCES = \
 	lib/shash.h \
 	lib/simap.c \
 	lib/simap.h \
+	lib/simon.h \
 	lib/signals.c \
 	lib/signals.h \
 	lib/smap.c \

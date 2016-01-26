@@ -51,6 +51,8 @@
 #include "tunnel.h"
 #include "vlog.h"
 
+#include "simon.h"
+
 COVERAGE_DEFINE(xlate_actions);
 
 VLOG_DEFINE_THIS_MODULE(ofproto_dpif_xlate);
@@ -214,6 +216,9 @@ static struct skb_priority_to_dscp *get_skb_priority(const struct xport *,
 static void clear_skb_priorities(struct xport *);
 static bool dscp_from_skb_priority(const struct xport *, uint32_t skb_priority,
                                    uint8_t *dscp);
+
+static void do_xlate_egress_action(const struct ofpact *a, struct xlate_ctx *ctx);
+
 
 void
 xlate_ofproto_set(struct ofproto_dpif *ofproto, const char *name,
@@ -1698,9 +1703,12 @@ xlate_table_action(struct xlate_ctx *ctx,
         ofp_port_t old_in_port = ctx->xin->flow.in_port.ofp_port;
         uint8_t old_table_id = ctx->table_id;
 
+	uint8_t counter_val;
+
         fprintf(stderr, "----- xlate_table_action %u %u ", ctx->table_id, table_id);
         ctx->table_id = table_id;
         fprintf(stderr, "%u-----\n", ctx->table_id);
+	VLOG_DBG("Performing table action for table_id:  %"PRIu8", in_port:  %"PRIx16, table_id, in_port);
 
         /* Look up a flow with 'in_port' as the input port.  Then restore the
          * original input port (otherwise OFPP_NORMAL and OFPP_IN_PORT will
@@ -1714,10 +1722,15 @@ xlate_table_action(struct xlate_ctx *ctx,
         if (ctx->xin->resubmit_hook) {
             ctx->xin->resubmit_hook(ctx->xin, rule, ctx->recurse);
         }
-        
-        if (!rule && may_packet_in && table_id > 200) {
-            fprintf(stderr, "xlate_table_action 3\n");
+
+	// If our rule returned a miss and we're in the production table space,
+	// construct a miss rule
+        if (!rule && may_packet_in && TABLE_IS_PRODUCTION(table_id)) {
+
             struct xport *xport;
+
+            fprintf(stderr, "xlate_table_action 3\n");
+	    VLOG_WARN("Sending miss for table %"PRIu8, table_id);
 
             /* XXX
              * check if table configuration flags
@@ -1729,25 +1742,38 @@ xlate_table_action(struct xlate_ctx *ctx,
             choose_miss_rule(xport ? xport->config : 0,
                              ctx->xbridge->miss_rule,
                              ctx->xbridge->no_packet_in_rule, &rule);
-        
         }
-        
+
         if (rule) {
             xlate_recursively(ctx, rule);
             rule_dpif_unref(rule);
         }
 
-        // Perform resumbit through atomic tables
-        fprintf(stderr, "xlate_table_action \n");
-        if (table_id < get_table_val() && table_id <= 200) {
-            fprintf(stderr, "xlate_table_action 1\n");
-            ctx->table_id = table_id + 1;
-            xlate_table_action(ctx, in_port, table_id + 1, may_packet_in);
-        } else if (table_id >= get_table_val() && table_id <= 200) {
-            fprintf(stderr, "xlate_table_action 2\n");
-            ctx->table_id = 201;
-            xlate_table_action(ctx, in_port, 201, may_packet_in);
-        }
+	/* Automatic resubmit:  submit to next populated ingress or egress table. */
+	if (TABLE_IS_INGRESS(table_id)) {
+	    uint8_t next_table_id;
+	    counter_val = get_table_counter_by_id(table_id);
+	    next_table_id = (table_id < counter_val) ? table_id + 1 :
+		                                               SIMON_TABLE_PRODUCTION_START;
+	    xlate_table_action(ctx, in_port, next_table_id, may_packet_in);
+
+	} else if (TABLE_IS_PRODUCTION(table_id)) {
+	    /* How do we know if we're at the end of the production tables?  We don't.
+	     * Instead, xlate_table_egress_action will add a resubmit when a terminal
+	     * action (output, controller, etc.) is evaluated. */
+	} else if (TABLE_IS_EGRESS(table_id)) {
+	    uint8_t egress_table_id;
+	    egress_table_id = table_id - SIMON_TABLE_EGRESS_START;
+	    counter_val = get_table_counter_by_id(table_id);
+
+	    if(egress_table_id < counter_val) {
+		xlate_table_action(ctx, in_port, table_id + 1, may_packet_in);
+	    }
+	    /* If the table ID exceeds the counter value, we're done. */
+	} else {
+	    VLOG_WARN("Table ID not in any block:  %"PRIu8, table_id);
+	}
+
 
         ctx->table_id = old_table_id;
     } else {
@@ -1762,9 +1788,10 @@ static void
 xlate_ofpact_resubmit(struct xlate_ctx *ctx,
                       const struct ofpact_resubmit *resubmit)
 {
-    fprintf(stderr, "xlate_ofpact_resumbit\n");
     ofp_port_t in_port;
     uint8_t table_id;
+
+    fprintf(stderr, "xlate_ofpact_resumbit\n");
 
     in_port = resubmit->in_port;
     if (in_port == OFPP_IN_PORT) {
@@ -1976,6 +2003,11 @@ xlate_output_action(struct xlate_ctx *ctx,
         xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
                            0, may_packet_in);
         break;
+    case OFPP_EGRESS:
+	VLOG_DBG("Sending flow to egress tables, out_port: 0x%"PRIx16, port);
+        xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
+                           SIMON_TABLE_EGRESS_START, may_packet_in);
+	break;
     case OFPP_NORMAL:
         xlate_normal(ctx);
         break;
@@ -2085,6 +2117,7 @@ slave_enabled_cb(ofp_port_t ofp_port, void *xbridge_)
     switch (ofp_port) {
     case OFPP_IN_PORT:
     case OFPP_TABLE:
+    case OFPP_EGRESS:
     case OFPP_NORMAL:
     case OFPP_FLOOD:
     case OFPP_ALL:
@@ -2140,7 +2173,6 @@ xlate_learn_action(struct xlate_ctx *ctx,
 static void
 xlate_learn_learn_action(struct xlate_ctx *ctx,
                          const struct ofpact_learn_learn *learn,
-                         uint8_t atomic_table_id,
                          struct rule_dpif *rule)
 {
     uint64_t ofpacts_stub[1024 / 8];
@@ -2156,22 +2188,46 @@ xlate_learn_learn_action(struct xlate_ctx *ctx,
 
     ofpbuf_use_stub(&ofpacts, ofpacts_stub, sizeof ofpacts_stub);
     learn_learn_execute(learn, &ctx->xin->flow, &fm, &ofpacts,
-        atomic_table_id, ctx->table_id);
+        ctx->table_id);
     ofproto_dpif_flow_mod(ctx->xbridge->ofproto, &fm);
     ofpbuf_uninit(&ofpacts);
 }
 
-static uint64_t
+static void
 xlate_increment_table_id_action(
   struct xlate_ctx *ctx,
   const struct ofpact_increment_table_id *incr_table_id) {
-    return increment_table_id_execute(incr_table_id, &ctx->xin->flow);
+
+    uint8_t table_val = get_table_counter_by_spec(incr_table_id->counter_spec);
+
+    /*
+     * Indicate that this action requires per-packet processing so its result cannot
+     * be cached.  Adding has_learn doesn't seem to be enough here, so instead, set a
+     * "slow path reason" for this packet.  The CONTROLLER slow path reason is the only one
+     * that doesn't incur any additional operations (like for bundle or STP).
+     * TODO:  Determine if this is the least impactful way to handle this situation; if so
+     * add another slow path reason.
+     */
+    ctx->xout->has_learn = true;
+    ctx->xout->slow = SLOW_CONTROLLER;
+
+    /* Don't increment if we're not processing a packet. */
+    if(!ctx->xin->may_increment) {
+	return;
+    }
+
+    VLOG_DBG("Executing increment_table_id, table_id:  %"PRIu8", spec:  %s, val:  %2"PRIu8", nw_src:  0x%"PRIx32", recurse: %"PRIu32,
+	     ctx->table_id,
+	     (incr_table_id->counter_spec == TABLE_SPEC_INGRESS) ? "INGRESS" : "EGRESS",
+	     table_val,
+	     ctx->xin->flow.nw_src,
+	     ctx->recurse);
+    increment_table_id_execute(incr_table_id);
 }
 
 static void
 xlate_learn_delete_action(struct xlate_ctx *ctx,
                           const struct ofpact_learn_delete *learn,
-                          uint8_t atomic_table,
                           struct rule_dpif *rule)
 {
     uint64_t ofpacts_stub[1024 / 8];
@@ -2188,14 +2244,14 @@ xlate_learn_delete_action(struct xlate_ctx *ctx,
 
     ofpbuf_use_stub(&ofpacts, ofpacts_stub, sizeof ofpacts_stub);
     learn_delete_execute(learn, &ctx->xin->flow, &fm, &ofpacts,
-        atomic_table, ctx->table_id);
+        ctx->table_id);
     ofproto_dpif_flow_mod(ctx->xbridge->ofproto, &fm);
     ofpbuf_uninit(&ofpacts);
 }
 
 static void
-xlate_timeout_act_action(struct xlate_ctx *ctx,
-                         const struct ofpact_timeout_act *act) {
+xlate_timeout_act_action(struct xlate_ctx *ctx OVS_UNUSED,
+                         const struct ofpact_timeout_act *act OVS_UNUSED) {
     return;
 }
 
@@ -2254,13 +2310,12 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
     struct flow_wildcards *wc = &ctx->xout->wc;
     struct flow *flow = &ctx->xin->flow;
     const struct ofpact *a;
-    uint8_t atomic_table_id = get_table_val();
     uint8_t resubmit_done;
     resubmit_done = 0;
 
-    fprintf(stderr, "do_xlate_actions %u %u %i\n",
-        ctx->table_id, ctx->xin->flow.in_port,
-        ofpacts_len); 
+    fprintf(stderr, "do_xlate_actions %u %"PRIu16 " %zu\n",
+        ctx->table_id, ctx->xin->flow.in_port.ofp_port,
+        ofpacts_len);
 
     OFPACT_FOR_EACH (a, ofpacts, ofpacts_len) {
         struct ofpact_controller *controller;
@@ -2446,20 +2501,17 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
             break;
 
         case OFPACT_LEARN_LEARN:
-            xlate_learn_learn_action(ctx, ofpact_get_LEARN_LEARN(a),
-                atomic_table_id, ctx->xin->rule);
+            xlate_learn_learn_action(ctx, ofpact_get_LEARN_LEARN(a), ctx->xin->rule);
             break;
- 
+
         case OFPACT_LEARN_DELETE:
-            xlate_learn_delete_action(ctx, ofpact_get_LEARN_DELETE(a),
-                atomic_table_id, ctx->xin->rule);
+            xlate_learn_delete_action(ctx, ofpact_get_LEARN_DELETE(a), ctx->xin->rule);
             break;
-        
+
         case OFPACT_INCREMENT_TABLE_ID:
-            atomic_table_id =
-                xlate_increment_table_id_action(ctx, ofpact_get_INCREMENT_TABLE_ID(a));
+	    xlate_increment_table_id_action(ctx, ofpact_get_INCREMENT_TABLE_ID(a));
             break;
- 
+
         case OFPACT_TIMEOUT_ACT:
             /* Don't execute a timeout_act, until the rule expires */
             xlate_timeout_act_action(ctx, ofpact_get_TIMEOUT_ACT(a));
@@ -2507,35 +2559,112 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
             xlate_sample_action(ctx, ofpact_get_SAMPLE(a));
             break;
         }
+
+	// If we are in the production table space, add some
+	// actions to load metadata for the egress table and resubmit.
+	if(TABLE_IS_PRODUCTION(ctx->table_id)) {
+	    do_xlate_egress_action(a, ctx);
+	}
+
     }
-    atomic_table_id = get_table_val();
-    // ctx->rule_dpif->up.table_id
-    /*if (ctx->table_id >= atomic_table_id && ctx->table_id <= 200) {
-        // resubmit to 201
-        //ctx->table_id = 201;
-        fprintf(stderr, "do_xlate_action resubmit to 201\n");
-        xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port, 201, false);
-    } else if (ctx->table_id <= 200) {
-        // resubmit to table_id + 1
-        //ctx->table_id = ctx->table_id + 1;
-        xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
-            ctx->table_id + 1, false);
-    }*/
-    /*if (ctx->table_id > 0 && ctx->table_id <= 200) {
-        struct ofpact_resubmit resub;
-        resub.in_port = ctx->xin->flow.in_port.ofp_port;
-        resub.table_id = ctx->table_id >= atomic_table_id ? 201 : ctx->table_id + 1;
-        xlate_ofpact_resubmit(ctx, &resub); 
-    }*/
+
+    /* If the action set is empty, we have a drop "action", so resubmit to the egress tables */
+    if((TABLE_IS_PRODUCTION(ctx->table_id) && (ofpacts_len == 0))) {
+
+	// Load the current output port into a register
+	ctx->xin->flow.regs[SIMON_OUTPUT_STATUS_REG] = SIMON_OUTPUT_STATUS_DROP;
+
+	// Resubmit to the egress tables
+	xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
+			   SIMON_TABLE_EGRESS_START, false);
+    }
+
     if (ctx->table_id == 0 && !resubmit_done && ctx->rule) {
         // resubmit to table_id + 1
         //ctx->table_id = ctx->table_id + 1;
-        
-        fprintf(stderr, "TABLE_ZERO NO_RESUB  %p\n", ctx->rule); 
-         
+
+        fprintf(stderr, "TABLE_ZERO NO_RESUB  %p\n", ctx->rule);
+
         xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
             ctx->table_id + 1, false);
     }
+
+
+}
+
+static void
+do_xlate_egress_action(const struct ofpact *a, struct xlate_ctx *ctx)
+{
+    struct ofpact_output *output;
+
+    switch(a->type)
+    {
+    case OFPACT_OUTPUT:
+
+	output = ofpact_get_OUTPUT(a);
+
+	// Load the current output port into a register
+	ctx->xin->flow.regs[SIMON_OUTPUT_STATUS_REG] = output->port;
+
+	// Resubmit to the egress tables
+	xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
+			   SIMON_TABLE_EGRESS_START, false);
+	break;
+
+    case OFPACT_CONTROLLER:
+
+	// Load a constant signifying that this was a controller action
+	ctx->xin->flow.regs[SIMON_OUTPUT_STATUS_REG] = SIMON_OUTPUT_STATUS_CONTROLLER;
+
+	// Resubmit to the egress tables
+	xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
+			   SIMON_TABLE_EGRESS_START, false);
+	break;
+    case OFPACT_ENQUEUE:
+    case OFPACT_OUTPUT_REG:
+    case OFPACT_BUNDLE:
+    case OFPACT_SET_VLAN_VID:
+    case OFPACT_SET_VLAN_PCP:
+    case OFPACT_STRIP_VLAN:
+    case OFPACT_PUSH_VLAN:
+    case OFPACT_SET_ETH_SRC:
+    case OFPACT_SET_ETH_DST:
+    case OFPACT_SET_IPV4_SRC:
+    case OFPACT_SET_IPV4_DST:
+    case OFPACT_SET_IPV4_DSCP:
+    case OFPACT_SET_L4_SRC_PORT:
+    case OFPACT_SET_L4_DST_PORT:
+    case OFPACT_REG_MOVE:
+    case OFPACT_REG_LOAD:
+    case OFPACT_STACK_PUSH:
+    case OFPACT_STACK_POP:
+    case OFPACT_DEC_TTL:
+    case OFPACT_SET_MPLS_TTL:
+    case OFPACT_DEC_MPLS_TTL:
+    case OFPACT_SET_TUNNEL:
+    case OFPACT_WRITE_METADATA:
+    case OFPACT_SET_QUEUE:
+    case OFPACT_POP_QUEUE:
+    case OFPACT_FIN_TIMEOUT:
+    case OFPACT_RESUBMIT:
+    case OFPACT_LEARN:
+    case OFPACT_LEARN_LEARN:
+    case OFPACT_LEARN_DELETE:
+    case OFPACT_INCREMENT_TABLE_ID:
+    case OFPACT_TIMEOUT_ACT:
+    case OFPACT_MULTIPATH:
+    case OFPACT_NOTE:
+    case OFPACT_EXIT:
+    case OFPACT_PUSH_MPLS:
+    case OFPACT_POP_MPLS:
+    case OFPACT_SAMPLE:
+    case OFPACT_CLEAR_ACTIONS:
+    case OFPACT_GOTO_TABLE:
+    case OFPACT_METER:
+    default:
+	break;
+    }
+
 }
 
 void
@@ -2547,6 +2676,7 @@ xlate_in_init(struct xlate_in *xin, struct ofproto_dpif *ofproto,
     xin->flow = *flow;
     xin->packet = packet;
     xin->may_learn = packet != NULL;
+    xin->may_increment = packet != NULL;
     xin->rule = rule;
     xin->ofpacts = NULL;
     xin->ofpacts_len = 0;

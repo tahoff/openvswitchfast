@@ -2876,6 +2876,8 @@ handle_packet_out(struct ofconn *ofconn, const struct ofp_header *oh)
     union flow_in_port in_port_;
     enum ofperr error;
 
+    uint32_t xid;
+
     COVERAGE_INC(ofproto_packet_out);
 
     error = reject_slave_controller(ofconn);
@@ -2910,6 +2912,15 @@ handle_packet_out(struct ofconn *ofconn, const struct ofp_header *oh)
     /* Verify actions against packet, then send packet if successful. */
     in_port_.ofp_port = po.in_port;
     flow_extract(payload, 0, 0, NULL, &in_port_, &flow);
+
+    /* If the XID has a mask pertaining to Simon, extract the original
+     * port number from this field and load it into the output status register. */
+    xid = ntohl(oh->xid);
+
+    if(xid & SIMON_OFP_IN_XID_MASK) {
+	flow.regs[SIMON_OUTPUT_STATUS_REG] = xid & 0x0000ffff;
+    }
+
     error = ofproto_check_ofpacts(p, po.ofpacts, po.ofpacts_len, &flow, 0);
     if (!error) {
         error = p->ofproto_class->packet_out(p, payload, &flow,
@@ -4403,7 +4414,7 @@ ofproto_rule_expire(struct rule *rule, uint8_t reason)
 void learn_delete_execute(const struct ofpact_learn_delete *learn,
         const struct flow *flow,
         struct ofputil_flow_mod *fm, struct ofpbuf *ofpacts,
-        uint8_t atomic_table, uint8_t rule_table) {
+        uint8_t rule_table) {
     
     const struct ofpact_learn_spec *spec;
     struct ofpact_resubmit *resubmit;
@@ -4414,8 +4425,10 @@ void learn_delete_execute(const struct ofpact_learn_delete *learn,
     fm->cookie_mask = htonll(learn->cookie);
     fm->new_cookie = htonll(learn->cookie);
     
-    if (learn->table_spec == DELETE_USING_ATOMIC_TABLE) {
-        fm->table_id = atomic_table;
+    if (learn->table_spec == DELETE_USING_INGRESS_ATOMIC_TABLE) {
+        fm->table_id = get_table_counter_by_spec(TABLE_SPEC_INGRESS);
+    } else if (learn->table_spec == DELETE_USING_EGRESS_ATOMIC_TABLE) {
+        fm->table_id = SIMON_TABLE_EGRESS_START + get_table_counter_by_spec(TABLE_SPEC_EGRESS);
     } else if (learn->table_spec == DELETE_USING_RULE_TABLE) {
         fm->table_id = rule_table;
     } else {
@@ -4502,8 +4515,7 @@ void learn_delete_execute(const struct ofpact_learn_delete *learn,
 void
 learn_learn_execute(const struct ofpact_learn_learn *learn,
         const struct flow *flow, struct ofputil_flow_mod *fm,
-        struct ofpbuf *ofpacts,
-        uint8_t atomic_table, uint8_t rule_table)
+        struct ofpbuf *ofpacts, uint8_t rule_table)
 {
     fprintf(stderr, "learn_learn_execute\n");
     //if (learn->learn_on_timeout) {
@@ -4523,8 +4535,10 @@ learn_learn_execute(const struct ofpact_learn_learn *learn,
     fm->cookie_mask = htonll(0);
     fm->new_cookie = htonll(learn->cookie);
 
-    if (learn->table_spec == LEARN_USING_ATOMIC_TABLE) {
-        fm->table_id = atomic_table;
+    if (learn->table_spec == LEARN_USING_INGRESS_ATOMIC_TABLE) {
+        fm->table_id = get_table_counter_by_spec(TABLE_SPEC_INGRESS);
+    } else if (learn->table_spec == LEARN_USING_EGRESS_ATOMIC_TABLE) {
+        fm->table_id = SIMON_TABLE_EGRESS_START + get_table_counter_by_spec(TABLE_SPEC_EGRESS);
     } else if (learn->table_spec == LEARN_USING_RULE_TABLE) {
         fm->table_id = rule_table;
     } else {
@@ -4618,7 +4632,7 @@ learn_learn_execute(const struct ofpact_learn_learn *learn,
     fm->ofpacts_len = ofpacts->size;
 }
 
-/* 
+/*
 * Actions taken cannot assume that there's a packet, because there isn't one.
 */
 void timeout_act_execute(const struct ofpact_timeout_act *act,
@@ -4629,8 +4643,6 @@ void timeout_act_execute(const struct ofpact_timeout_act *act,
     struct ofpact *a;
     struct ofputil_flow_mod fm;
     struct flow_wildcards wc;
-    uint8_t atomic_table_id;
-    atomic_table_id = get_table_val();
 
     wc.masks = *flow;
 
@@ -4648,7 +4660,7 @@ void timeout_act_execute(const struct ofpact_timeout_act *act,
 
     if (act->ofpacts && act->ofpacts_len > 0) {
         //for (i = 0; i < act->ofpacts_len; i++) {}
-        OFPACT_FOR_EACH (a, act->ofpacts, act->ofpacts_len) {  
+        OFPACT_FOR_EACH (a, act->ofpacts, act->ofpacts_len) {
             //a = &act->ofpacts[i];
             switch (a->type) {
                 case OFPACT_LEARN:
@@ -4666,13 +4678,13 @@ void timeout_act_execute(const struct ofpact_timeout_act *act,
                     }
 
                     //learn_mask(learn, &wc);
-                    
+
                     // Populate fm with the learn attributes
                     // TODO - 3rd arguement is ofpact*, but function takes in ofpbuf
                     //ovs_mutex_unlock(&ofproto_mutex);
                     timeout_learn_execute(learn, &fm, &ofpacts_buf);
                     //learn_execute(learn, flow, &fm, &ofpacts_buf);
-                    
+
                     // ofproto_flow_mod(struct ofproto *ofproto, struct ofputil_flow_mod *fm)
                     ofproto_flow_mod(ofproto, &fm);
                     ofpbuf_uninit(&ofpacts_buf);
@@ -4691,15 +4703,14 @@ void timeout_act_execute(const struct ofpact_timeout_act *act,
                     // Populate fm with the learn attributes
                     //ovs_mutex_unlock(&ofproto_mutex);
                     learn_delete_execute(ofpact_get_LEARN_DELETE(a), flow,
-                         &fm, &ofpacts_buf, atomic_table_id, rule->table_id);
+                         &fm, &ofpacts_buf, rule->table_id);
 
                     // ofproto_flow_mod(struct ofproto *ofproto, struct ofputil_flow_mod *fm)
                     ofproto_flow_mod(ofproto, &fm);
-                    ofpbuf_uninit(&ofpacts_buf); 
+                    ofpbuf_uninit(&ofpacts_buf);
                     break;
                 case OFPACT_INCREMENT_TABLE_ID:
-                    atomic_table_id = increment_table_id_execute(
-                        ofpact_get_INCREMENT_TABLE_ID(a), flow);
+                    increment_table_id_execute(ofpact_get_INCREMENT_TABLE_ID(a));
                     break;
                 case OFPACT_LEARN_LEARN:
                     ofpbuf_use_stub(&ofpacts_buf, ofpacts_stub, sizeof ofpacts_stub);
@@ -4708,12 +4719,11 @@ void timeout_act_execute(const struct ofpact_timeout_act *act,
                     //learn = ofpact_get_LEARN_LEARN(a);
 
                     //learn_mask(learn, &wc);
-                    
+
                     // Populate fm with the learn attributes
                     //ovs_mutex_unlock(&ofproto_mutex);
                     learn_learn_execute(ofpact_get_LEARN_LEARN(a), flow, &fm,
-                                        &ofpacts_buf, atomic_table_id, rule->table_id);
-                    
+                                        &ofpacts_buf, rule->table_id);
                     // ofproto_flow_mod(struct ofproto *ofproto, struct ofputil_flow_mod *fm)
                     ofproto_flow_mod(ofproto, &fm);
                     ofpbuf_uninit(&ofpacts_buf);

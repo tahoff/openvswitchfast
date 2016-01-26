@@ -633,7 +633,7 @@ execute_flow_miss(struct flow_miss *miss, struct dpif_op *ops, size_t *n_ops)
              * set up a flow and thereby allow us to exit fail-open.
              *
              * See the top-level comment in fail-open.c for more information. */
-            /*
+#if 0
             pin = xmalloc(sizeof(*pin));
             pin->packet = xmemdup(packet->data, packet->size);
             pin->packet_len = packet->size;
@@ -641,10 +641,10 @@ execute_flow_miss(struct flow_miss *miss, struct dpif_op *ops, size_t *n_ops)
             pin->controller_id = 0;
             pin->table_id = 0;
             pin->cookie = 0;
-            pin->send_len = 0; /* Not used for flow table misses. *\/
+            pin->send_len = 0; /* Not used for flow table misses. */
             flow_get_metadata(&miss->flow, &pin->fmd);
             ofproto_dpif_send_packet_in(ofproto, pin);
-            */
+#endif
         }
     }
 

@@ -1002,7 +1002,8 @@ struct nx_action_increment_table_id {
     ovs_be16 len;
     ovs_be32 vendor;
     ovs_be16 subtype;
-    uint8_t pad[6];
+    uint8_t counter_spec;
+    uint8_t pad[5];
 };
 OFP_ASSERT(sizeof(struct nx_action_increment_table_id) == 16);
 
