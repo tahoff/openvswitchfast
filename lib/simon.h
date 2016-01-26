@@ -31,4 +31,32 @@
 
 
 #define SIMON_OFP_IN_XID_MASK          (0xbe000000)
+
+// Register compare map
+
+#define SIMON_REG_IDX_DL_TYPE    (8)
+#define SIMON_REG_IDX_IP_PROTO  (12)
+#define SIMON_REG_IDX_IP_SRC    (13)
+#define SIMON_REG_IDX_IP_DST    (14)
+#define SIMON_REG_IDX_TP_SRC    (15)
+#define SIMON_REG_IDX_TP_DST    (15)
+
+#define SIMON_REG(REGS, INDEX, MASK, SHIFT)	\
+    ((REGS[INDEX] & MASK) >> SHIFT)
+
+#define SIMON_REG32(regs, idx)     SIMON_REG(regs, idx, 0xffffffff, 0)
+#define SIMON_REG16_HI(regs, idx)  SIMON_REG(regs, idx, 0xffff0000, 8)
+#define SIMON_REG16_LO(regs, idx)  SIMON_REG(regs, idx, 0x0000ffff, 0)
+#define SIMON_REG8_LO(regs, idx)   SIMON_REG(regs, idx, 0x000000ff, 0)
+
+#define SIMON_REG_DL_TYPE(regs)   SIMON_REG16_LO(regs, SIMON_REG_IDX_DL_TYPE)
+
+#define SIMON_REG_IP_PROTO(regs)  SIMON_REG8_LO(regs,  SIMON_REG_IDX_IP_PROTO)
+#define SIMON_REG_IP_SRC(regs)    SIMON_REG32(regs,    SIMON_REG_IDX_IP_SRC)
+#define SIMON_REG_IP_DST(regs)    SIMON_REG32(regs,    SIMON_REG_IDX_IP_DST)
+#define SIMON_REG_TP_SRC(regs)    SIMON_REG16_HI(regs, SIMON_REG_IDX_TP_SRC)
+#define SIMON_REG_TP_DST(regs)    SIMON_REG16_LO(regs, SIMON_REG_IDX_TP_DST)
+
+#define SIMON_REG_COMPARE(a, b)  (a == b) ? 1 : 0;
+
 #endif

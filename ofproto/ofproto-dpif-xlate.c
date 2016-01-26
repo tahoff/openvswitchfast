@@ -1789,12 +1789,20 @@ xlate_table_action(struct xlate_ctx *ctx,
 }
 
 
+
 static void
 do_egress_compare(struct xlate_ctx *ctx)
 {
     struct flow *flow = &ctx->xin->flow;
     VLOG_WARN("Performing egress compare, reg:  %"PRIx32",  nw_src:  %"PRIx32, flow->regs[8], ntohl(flow->nw_src));
-    flow->regs[8] = (flow->regs[8] == ntohl(flow->nw_src)) ? 1 : 0;
+
+
+    /* Test:  compare the IP source and register 8, loading the result back into register 8.  */
+    //flow->regs[8] = (flow->regs[8] == ntohl(flow->nw_src)) ? 1 : 0;
+    flow->regs[SIMON_REG_IDX_IP_SRC] = (SIMON_REG_IP_SRC(flow->regs) == ntohl(flow->nw_src)) ? 1 : 0;
+    flow->regs[SIMON_REG_IDX_IP_DST] = (SIMON_REG_IP_DST(flow->regs) == ntohl(flow->nw_dst)) ? 1 : 0;
+    flow->regs[SIMON_REG_IDX_IP_PROTO] = (SIMON_REG_IP_PROTO(flow->regs) == flow->nw_proto) ? 1 : 0;
+    flow->regs[SIMON_REG_IDX_DL_TYPE] = (SIMON_REG_DL_TYPE(flow->regs) == ntohs(flow->dl_type)) ? 1 : 0;
 }
 
 
