@@ -1,5 +1,35 @@
 Contributions to Open vSwitch:
 
+The table space is now segmented as follows:
+  0-149:  Ingress
+150-199:  Production
+200-253:  Egress
+
+Ingress and egress tables are evaluated using "automatic resubmit,"
+meaning that the next table in the block will be evaluated so long as
+the current table ID is less than the block's atomic counter value.
+
+Operation of egress tables
+
+When a flow is being evaluated in the production tables and it reaches
+a "terminal action," or an action that would normally signal the end
+of evaluation (such as an output, flood, controller action, or a
+"drop" action, which is the lack of an action), the flow is
+resubmitted to the beginning of the egress table space.  In addition,
+the intended output port is loaded into register 1 so that it can be
+used in egress table matching.  If the terminal action was a flood,
+drop, or controller action, the corresponding OpenFlow reserved port
+number is loaded into register 1 instead (OFPP_FLOOD, OFPP_NONE, or
+OFPP_CONTROLLER, respectively).  
+
+In order to evaluate decisions made by the controller using a
+PACKET_OUT message, the proxy generates a PACKET_OUT using a new OF
+reserved prort OFPP_EGRESS, which is used to submit a flow directly to
+the egress tables.  In order to easily pass the controller's output
+port decision in this message (ie, using a stupid hack), the output
+port number is stored in this message's XID field and loaded into
+register 1 for processing.
+
 New Actions:
 timeout_act:
   Installing a rule with timeout_act creates a list of actions which are 
@@ -28,12 +58,14 @@ learn_learn:
     ovs-appctl ofproto/trace br0 dl_dst=10:10:10:10:10:10,vlan_tci=0x3 -generate
     ovs-ofctl dump-flows br0
 
-increment_cookie:
-  Increment a global cookie value, which can be used for newly learned rules.
-  NOTE: In order to use the cookie value, use learn_learn's property use_atomic_cookie.
+increment_table_id:
+  Increment a global atomic counter indicating the next ingress or
+  egress table.
+  NOTE: In order to use the counter value, use learn_learn's property
+  use_atomic_table with the argument INGRESS or EGRESS.
   Example:
     ovs-vsctl add-br br0
-    ovs-ofctl add-flow br0 "table=0 action=increment_cookie(),learn_learn(table=10, use_atomic_cookie=1, NXM_OF_VLAN_TCI[0..11], NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[]),learn_learn(table=11, use_atomic_cookie=1, NXM_OF_VLAN_TCI[0..11], NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[]),resubmit(,3)"
+    ovs-ofctl add-flow br0 "table=0 action=increment_table_id(INGRESS),learn_learn(table=10, use_atomic_table=INGRESS, NXM_OF_VLAN_TCI[0..11], NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[]),learn_learn(table=11, use_atomic_cookie=1, NXM_OF_VLAN_TCI[0..11], NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[]),resubmit(,3)"
     ovs-appctl ofproto/trace br0 dl_src=10:10:10:10:10:10,vlan_tci=0x3 -generate
     ovs-ofctl dump-flows br0
 

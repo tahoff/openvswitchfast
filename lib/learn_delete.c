@@ -626,9 +626,13 @@ learn_delete_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
         } else if (!strcmp(name, "cookie")) {
             learn->cookie = strtoull(value, NULL, 0);
         } else if (!strcmp(name, "use_atomic_table")) {
-            if (atoi(value) != 0) {
-                learn->table_spec = DELETE_USING_ATOMIC_TABLE;
-            }
+	    if(!strcmp(value, "INGRESS")) {
+		learn->table_spec = DELETE_USING_INGRESS_ATOMIC_TABLE;
+	    } else if(!strcmp(value, "EGRESS")) {
+		learn->table_spec = DELETE_USING_EGRESS_ATOMIC_TABLE;
+	    } else {
+		return xasprintf("%s: Invalid counter spec, must be 'INGRESS' or 'EGRESS'", orig);
+	    }
         } else if (!strcmp(name, "use_rule_table")) {
             if (atoi(value) != 0) {
                 learn->table_spec = DELETE_USING_RULE_TABLE;
@@ -707,8 +711,10 @@ learn_delete_format(const struct ofpact_learn_delete *learn, struct ds *s)
         ds_put_format(s, ",cookie=%#"PRIx64, learn->cookie);
     }
 
-    if (learn->table_spec == DELETE_USING_ATOMIC_TABLE) {
-        ds_put_cstr(s, ",table_spec=DELETE_USING_ATOMIC_TABLE");
+    if (learn->table_spec == DELETE_USING_INGRESS_ATOMIC_TABLE) {
+        ds_put_cstr(s, ",table_spec=DELETE_USING_INGRESS_ATOMIC_TABLE");
+    } else if (learn->table_spec == DELETE_USING_EGRESS_ATOMIC_TABLE) {
+	ds_put_cstr(s, ",table_spec=DELETE_USING_EGRESS_ATOMIC_TABLE");
     } else if (learn->table_spec == DELETE_USING_RULE_TABLE) {
         ds_put_cstr(s, ",table_spec=DELETE_USING_RULE_TABLE");
     }

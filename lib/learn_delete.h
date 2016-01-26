@@ -33,12 +33,13 @@ struct nx_action_learn_delete;
  * See include/openflow/nicira-ext.h for NXAST_DELETE_LEARN specification.
  */
 
-#define DELETE_USING_ATOMIC_TABLE  1
 #define DELETE_USING_RULE_TABLE  2
+#define DELETE_USING_INGRESS_ATOMIC_TABLE 3
+#define DELETE_USING_EGRESS_ATOMIC_TABLE 4
 
 enum ofperr learn_delete_from_openflow(const struct nx_action_learn_delete *,
                                        struct ofpbuf *ofpacts);
-enum ofperr learn_delete_check(const struct ofpact_learn_delete *, 
+enum ofperr learn_delete_check(const struct ofpact_learn_delete *,
                                const struct flow *);
 void learn_delete_to_nxast(const struct ofpact_learn_delete *,
                            struct ofpbuf *openflow);

@@ -27,6 +27,7 @@
 #include "dynamic-string.h"
 #include "increment_table_id.h"
 #include "learn.h"
+#include "learn_learn.h"
 #include "learn_delete.h"
 #include "meta-flow.h"
 #include "multipath.h"

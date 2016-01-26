@@ -74,6 +74,8 @@ struct xlate_in {
      * not if we are just revalidating. */
     bool may_learn;
 
+    bool may_increment;
+
     /* The rule initiating translation or NULL. If both 'rule' and 'ofpacts'
      * are NULL, xlate_actions() will do the initial rule lookup itself. */
     struct rule_dpif *rule;
