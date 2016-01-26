@@ -69,6 +69,32 @@ enum mf_field_id {
     MFF_REG7,                   /* be32 */
 #endif
 
+#if FLOW_N_REGS > 8
+    MFF_REG8,                   /* be32 */
+#endif
+#if FLOW_N_REGS > 9
+    MFF_REG9,                   /* be32 */
+#endif
+#if FLOW_N_REGS > 10
+    MFF_REG10,                   /* be32 */
+#endif
+#if FLOW_N_REGS > 11
+    MFF_REG11,                   /* be32 */
+#endif
+#if FLOW_N_REGS > 12
+    MFF_REG12,                   /* be32 */
+#endif
+#if FLOW_N_REGS > 13
+    MFF_REG13,                   /* be32 */
+#endif
+#if FLOW_N_REGS > 14
+    MFF_REG14,                   /* be32 */
+#endif
+#if FLOW_N_REGS > 15
+    MFF_REG15,                   /* be32 */
+#endif
+
+
     /* L2. */
     MFF_ETH_SRC,                /* mac */
     MFF_ETH_DST,                /* mac */
@@ -171,8 +197,14 @@ enum mf_field_id {
 # define CASE_MFF_REGS                                          \
     case MFF_REG0: case MFF_REG1: case MFF_REG2: case MFF_REG3: \
     case MFF_REG4: case MFF_REG5: case MFF_REG6: case MFF_REG7
+#elif FLOW_N_REGS == 16
+# define CASE_MFF_REGS                                          \
+    case MFF_REG0: case MFF_REG1: case MFF_REG2: case MFF_REG3: \
+    case MFF_REG4: case MFF_REG5: case MFF_REG6: case MFF_REG7: \
+    case MFF_REG8: case MFF_REG9: case MFF_REG10: case MFF_REG11: \
+    case MFF_REG12: case MFF_REG13: case MFF_REG14: case MFF_REG15
 #else
-# error
+#error
 #endif
 
 /* Prerequisites for matching a field.
