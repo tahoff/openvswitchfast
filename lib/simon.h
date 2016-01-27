@@ -35,10 +35,10 @@
 // Register compare map
 
 #define SIMON_REG_IDX_DL_TYPE    (7)
-#define SIMON_REG_IDX_DL_SRC_HI (8)
-#define SIMON_REG_IDX_DL_DST_HI (8)
-#define SIMON_REG_IDX_DL_SRC     (9)
-#define SIMON_REG_IDX_DL_DST    (10)
+#define SIMON_REG_IDX_DL_SRC_HI  (8) /* Input:  bits 47-32 of dl_src, stored in upper two bytes of register. */
+#define SIMON_REG_IDX_DL_DST_HI  (8) /* Input:  bits 47-32 of dl_dst, stored in lower two bytes of register. */
+#define SIMON_REG_IDX_DL_SRC     (9) /* Input:  bits 31-0  of dl_src, compare result for dl_src stored here on output. */
+#define SIMON_REG_IDX_DL_DST    (10) /* Input:  bits 31-0  of dl_dst, compare result for dl_dst stored here on output. */
 #define SIMON_REG_IDX_IP_PROTO  (11)
 #define SIMON_REG_IDX_IP_SRC    (12)
 #define SIMON_REG_IDX_IP_DST    (13)
@@ -55,13 +55,19 @@
 
 #define SIMON_REG_DL_TYPE(regs)   SIMON_REG16_LO(regs, SIMON_REG_IDX_DL_TYPE)
 
+#define SIMON_REG_DL_SRC_LO(regs) SIMON_REG32(regs,    SIMON_REG_IDX_DL_SRC)
+#define SIMON_REG_DL_SRC_HI(regs) SIMON_REG16_HI(regs, SIMON_REG_IDX_DL_SRC_HI)
+#define SIMON_REG_DL_DST_LO(regs) SIMON_REG32(regs,    SIMON_REG_IDX_DL_DST)
+#define SIMON_REG_DL_DST_HI(regs) SIMON_REG16_LO(regs, SIMON_REG_IDX_DL_DST_HI)
+
+
 #define SIMON_REG_IP_PROTO(regs)  SIMON_REG8_LO(regs,  SIMON_REG_IDX_IP_PROTO)
 #define SIMON_REG_IP_SRC(regs)    SIMON_REG32(regs,    SIMON_REG_IDX_IP_SRC)
 #define SIMON_REG_IP_DST(regs)    SIMON_REG32(regs,    SIMON_REG_IDX_IP_DST)
+
 #define SIMON_REG_TP_SRC(regs)    SIMON_REG16_LO(regs, SIMON_REG_IDX_TP_SRC)
 #define SIMON_REG_TP_DST(regs)    SIMON_REG16_LO(regs, SIMON_REG_IDX_TP_DST)
 
-#define SIMON_REG_DL_SRC_LO(regs) SIMON_REG32(regs,    SIMON_REG_IDX_DL_SRC)
-#define SIMON_REG_DL_SRC_HI(regs) SIMON_REG16_HI(regs, SIMON_REG_IDX_DL_SRC_HI)
+
 
 #endif
