@@ -1803,6 +1803,9 @@ do_egress_compare(struct xlate_ctx *ctx)
     flow->regs[SIMON_REG_IDX_IP_DST] = (SIMON_REG_IP_DST(flow->regs) == ntohl(flow->nw_dst)) ? 1 : 0;
     flow->regs[SIMON_REG_IDX_IP_PROTO] = (SIMON_REG_IP_PROTO(flow->regs) == flow->nw_proto) ? 1 : 0;
     flow->regs[SIMON_REG_IDX_DL_TYPE] = (SIMON_REG_DL_TYPE(flow->regs) == ntohs(flow->dl_type)) ? 1 : 0;
+
+    flow->regs[SIMON_REG_IDX_TP_SRC] = (SIMON_REG_TP_SRC(flow->regs) == ntohs(flow->tp_src)) ? 1 : 0;
+    flow->regs[SIMON_REG_IDX_TP_DST] = (SIMON_REG_TP_DST(flow->regs) == ntohs(flow->tp_dst)) ? 1 : 0;
 }
 
 
