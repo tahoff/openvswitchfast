@@ -68,6 +68,10 @@
 #define SIMON_REG_TP_SRC(regs)    SIMON_REG16_LO(regs, SIMON_REG_IDX_TP_SRC)
 #define SIMON_REG_TP_DST(regs)    SIMON_REG16_LO(regs, SIMON_REG_IDX_TP_DST)
 
+#define SIMON_REG_COMPARE(REGS, IDX, PRED)  do {	 \
+	regs[SIMON_REG_IDX_##IDX] = (PRED) ? 1 : 0;      \
+    } while(0)
 
+#define SIMON_REG_EQ(REGS, IDX, A, B) SIMON_REG_COMPARE(REGS, IDX, (A == B))
 
 #endif
