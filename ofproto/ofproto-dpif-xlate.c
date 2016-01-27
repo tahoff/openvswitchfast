@@ -1794,8 +1794,7 @@ static void
 do_egress_compare(struct xlate_ctx *ctx)
 {
     struct flow *flow = &ctx->xin->flow;
-    VLOG_WARN("Performing egress compare, reg:  %"PRIx32",  nw_src:  %"PRIx32, flow->regs[8], ntohl(flow->nw_src));
-
+    uint64_t orig_dl_src, flow_dl_src;
 
     /* Test:  compare the IP source and register 8, loading the result back into register 8.  */
     //flow->regs[8] = (flow->regs[8] == ntohl(flow->nw_src)) ? 1 : 0;
@@ -1806,6 +1805,15 @@ do_egress_compare(struct xlate_ctx *ctx)
 
     flow->regs[SIMON_REG_IDX_TP_SRC] = (SIMON_REG_TP_SRC(flow->regs) == ntohs(flow->tp_src)) ? 1 : 0;
     flow->regs[SIMON_REG_IDX_TP_DST] = (SIMON_REG_TP_DST(flow->regs) == ntohs(flow->tp_dst)) ? 1 : 0;
+
+    orig_dl_src = (((uint64_t)SIMON_REG_DL_SRC_HI(flow->regs)) << 32) | ((uint64_t)SIMON_REG_DL_SRC_LO(flow->regs));
+    flow_dl_src = eth_addr_to_uint64(flow->dl_src);
+
+    VLOG_WARN("Performing egress compare, reg:  %"PRIx64",  dl_src:  %"PRIx64, orig_dl_src, flow_dl_src);
+
+    flow->regs[SIMON_REG_IDX_DL_SRC] = (orig_dl_src == flow_dl_src) ? 1 : 0;
+
+
 }
 
 
