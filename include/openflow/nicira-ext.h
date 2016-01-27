@@ -1631,6 +1631,22 @@ OFP_ASSERT(sizeof(struct nx_action_output_reg) == 24);
 #define NXM_NX_REG6_W     NXM_HEADER_W(0x0001, 6, 4)
 #define NXM_NX_REG7       NXM_HEADER  (0x0001, 7, 4)
 #define NXM_NX_REG7_W     NXM_HEADER_W(0x0001, 7, 4)
+#define NXM_NX_REG8       NXM_HEADER  (0x0001, 8, 4)
+#define NXM_NX_REG8_W     NXM_HEADER_W(0x0001, 8, 4)
+#define NXM_NX_REG9       NXM_HEADER  (0x0001, 9, 4)
+#define NXM_NX_REG9_W     NXM_HEADER_W(0x0001, 9, 4)
+#define NXM_NX_REG10      NXM_HEADER  (0x0001, 10, 4)
+#define NXM_NX_REG10_W    NXM_HEADER_W(0x0001, 10, 4)
+#define NXM_NX_REG11      NXM_HEADER  (0x0001, 11, 4)
+#define NXM_NX_REG11_W    NXM_HEADER_W(0x0001, 11, 4)
+#define NXM_NX_REG12      NXM_HEADER  (0x0001, 12, 4)
+#define NXM_NX_REG12_W    NXM_HEADER_W(0x0001, 12, 4)
+#define NXM_NX_REG13      NXM_HEADER  (0x0001, 13, 4)
+#define NXM_NX_REG13_W    NXM_HEADER_W(0x0001, 13, 4)
+#define NXM_NX_REG14      NXM_HEADER  (0x0001, 14, 4)
+#define NXM_NX_REG14_W    NXM_HEADER_W(0x0001, 14, 4)
+#define NXM_NX_REG15      NXM_HEADER  (0x0001, 15, 4)
+#define NXM_NX_REG15_W    NXM_HEADER_W(0x0001, 15, 4)
 
 /* Tunnel ID.
  *

@@ -208,6 +208,30 @@ static const struct mf_field mf_fields[MFF_N_IDS] = {
     REGISTER(7),
 #endif
 #if FLOW_N_REGS > 8
+    REGISTER(8),
+#endif
+#if FLOW_N_REGS > 9
+    REGISTER(9),
+#endif
+#if FLOW_N_REGS > 10
+    REGISTER(10),
+#endif
+#if FLOW_N_REGS > 11
+    REGISTER(11),
+#endif
+#if FLOW_N_REGS > 12
+    REGISTER(12),
+#endif
+#if FLOW_N_REGS > 13
+    REGISTER(13),
+#endif
+#if FLOW_N_REGS > 14
+    REGISTER(14),
+#endif
+#if FLOW_N_REGS > 15
+    REGISTER(15),
+#endif
+#if FLOW_N_REGS > 16
 #error
 #endif
 
