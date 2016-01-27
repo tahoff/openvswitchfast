@@ -1836,12 +1836,12 @@ do_egress_compare(struct xlate_ctx *ctx)
     orig_tp_dst = SIMON_REG_TP_DST(regs);
     flow_tp_dst = ntohs(flow->tp_dst);
 
-    VLOG_WARN("Performing egress compare, reg:  %"PRIx64",  dl_src:  %"PRIx64,
-	      orig_dl_src, flow_dl_src);
+    VLOG_DBG("Performing egress compare, reg:  %"PRIx64",  dl_src:  %"PRIx64,
+	     orig_dl_src, flow_dl_src);
 
 
-    VLOG_WARN("Performing egress compare, reg:  %"PRIx32",  ip_proto:  %"PRIx8,
-	      orig_ip_proto, flow->nw_proto);
+    VLOG_DBG("Performing egress compare, reg:  %"PRIx32",  ip_proto:  %"PRIx8,
+	     orig_ip_proto, flow->nw_proto);
 
     /* Now perform the comparisons, overwriting the values in the registers. */
 
