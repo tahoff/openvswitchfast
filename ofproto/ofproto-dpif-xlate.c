@@ -1799,24 +1799,19 @@ do_egress_compare(struct xlate_ctx *ctx)
     uint64_t orig_dl_src, flow_dl_src;
     uint64_t orig_dl_dst, flow_dl_dst;
 
-    //flow->regs[SIMON_REG_IDX_IP_SRC] = (SIMON_REG_IP_SRC(flow->regs) == ntohl(flow->nw_src)) ? 1 : 0;
-    SIMON_REG_EQ(regs, IP_SRC, SIMON_REG_IP_SRC(flow->regs), ntohl(flow->nw_src));
+    uint32_t orig_nw_src, flow_nw_src;
+    uint32_t orig_nw_dst, flow_nw_dst;
 
-    //flow->regs[SIMON_REG_IDX_IP_DST] = (SIMON_REG_IP_DST(flow->regs) == ntohl(flow->nw_dst)) ? 1 : 0;
-    SIMON_REG_EQ(regs, IP_DST, SIMON_REG_IP_DST(flow->regs), ntohl(flow->nw_dst));
+    uint32_t orig_tp_src, flow_tp_src;
+    uint32_t orig_tp_dst, flow_tp_dst;
 
+    uint32_t orig_dl_type;
+    uint32_t orig_ip_proto;
 
-    //flow->regs[SIMON_REG_IDX_IP_PROTO] = (SIMON_REG_IP_PROTO(flow->regs) == flow->nw_proto) ? 1 : 0;
-    SIMON_REG_EQ(regs, IP_PROTO, SIMON_REG_IP_PROTO(flow->regs), flow->nw_proto);
+    /* First, load all of the original values for the fields from the registers. */
 
-    //flow->regs[SIMON_REG_IDX_DL_TYPE] = (SIMON_REG_DL_TYPE(flow->regs) == ntohs(flow->dl_type)) ? 1 : 0;
-    SIMON_REG_EQ(regs, DL_TYPE, SIMON_REG_DL_TYPE(flow->regs), ntohs(flow->dl_type));
-
-    //flow->regs[SIMON_REG_IDX_TP_SRC] = (SIMON_REG_TP_SRC(flow->regs) == ntohs(flow->tp_src)) ? 1 : 0;
-    SIMON_REG_EQ(regs, TP_SRC, SIMON_REG_TP_SRC(flow->regs), ntohs(flow->tp_src));
-
-    //flow->regs[SIMON_REG_IDX_TP_DST] = (SIMON_REG_TP_DST(flow->regs) == ntohs(flow->tp_dst)) ? 1 : 0;
-    SIMON_REG_EQ(regs, TP_DST, SIMON_REG_TP_DST(flow->regs), ntohs(flow->tp_dst));
+    /* Data-link layer */
+    orig_dl_type = SIMON_REG_DL_TYPE(regs);
 
     /* Our inputs for dl_src and dl_dst need to be combined from two registers before comparing. */
     orig_dl_src = (((uint64_t)SIMON_REG_DL_SRC_HI(flow->regs)) << 32) | ((uint64_t)SIMON_REG_DL_SRC_LO(flow->regs));
@@ -1825,14 +1820,52 @@ do_egress_compare(struct xlate_ctx *ctx)
     orig_dl_dst = (((uint64_t)SIMON_REG_DL_DST_HI(flow->regs)) << 32) | ((uint64_t)SIMON_REG_DL_DST_LO(flow->regs));
     flow_dl_dst = eth_addr_to_uint64(flow->dl_dst);
 
-    VLOG_DBG("Performing egress compare, reg:  %"PRIx64",  dl_dst:  %"PRIx64, orig_dl_dst, flow_dl_dst);
+    /* Network layer */
+    orig_ip_proto = SIMON_REG_IP_PROTO(regs);
 
-    //flow->regs[SIMON_REG_IDX_DL_SRC] = (orig_dl_src == flow_dl_src) ? 1 : 0;
-    SIMON_REG_EQ(regs, DL_SRC, orig_dl_src, flow_dl_src);
+    orig_nw_src = SIMON_REG_IP_SRC(regs);
+    flow_nw_src = ntohl(flow->nw_src);
 
-    //flow->regs[SIMON_REG_IDX_DL_DST] = (orig_dl_dst == flow_dl_dst) ? 1 : 0;
-    SIMON_REG_EQ(regs, DL_DST, orig_dl_dst, flow_dl_dst);
+    orig_nw_dst = SIMON_REG_IP_DST(regs);
+    flow_nw_dst = ntohl(flow->nw_dst);
 
+    /* Transport layer */
+    orig_tp_src = SIMON_REG_TP_SRC(regs);
+    flow_tp_src = ntohs(flow->tp_src);
+
+    orig_tp_dst = SIMON_REG_TP_DST(regs);
+    flow_tp_dst = ntohs(flow->tp_dst);
+
+    VLOG_WARN("Performing egress compare, reg:  %"PRIx64",  dl_src:  %"PRIx64,
+	      orig_dl_src, flow_dl_src);
+
+
+    VLOG_WARN("Performing egress compare, reg:  %"PRIx32",  ip_proto:  %"PRIx8,
+	      orig_ip_proto, flow->nw_proto);
+
+    /* Now perform the comparisons, overwriting the values in the registers. */
+
+    /* Data-link layer */
+    SIMON_REG_EQ(regs, DL_TYPE,   orig_dl_type, ntohs(flow->dl_type));
+
+    SIMON_REG_EQ(regs, DL_SRC_SRC, orig_dl_src, flow_dl_src);
+    SIMON_REG_EQ(regs, DL_SRC_DST, orig_dl_src, flow_dl_dst);
+    SIMON_REG_EQ(regs, DL_DST_SRC, orig_dl_dst, flow_dl_src);
+    SIMON_REG_EQ(regs, DL_DST_DST, orig_dl_dst, flow_dl_dst);
+
+    /* Network layer */
+    SIMON_REG_EQ(regs, IP_PROTO, orig_ip_proto, flow->nw_proto);
+
+    SIMON_REG_EQ(regs, IP_SRC_SRC, orig_nw_src, flow_nw_src);
+    SIMON_REG_EQ(regs, IP_SRC_DST, orig_nw_src, flow_nw_dst);
+    SIMON_REG_EQ(regs, IP_DST_SRC, orig_nw_dst, flow_nw_src);
+    SIMON_REG_EQ(regs, IP_DST_DST, orig_nw_dst, flow_nw_dst);
+
+    /* Transport-layer fields */
+    SIMON_REG_EQ(regs, TP_SRC_SRC, orig_tp_src, flow_tp_src);
+    SIMON_REG_EQ(regs, TP_SRC_DST, orig_tp_src, flow_tp_dst);
+    SIMON_REG_EQ(regs, TP_DST_SRC, orig_tp_dst, flow_tp_src);
+    SIMON_REG_EQ(regs, TP_DST_DST, orig_tp_dst, flow_tp_dst);
 }
 
 
