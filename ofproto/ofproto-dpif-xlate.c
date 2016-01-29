@@ -218,7 +218,7 @@ static bool dscp_from_skb_priority(const struct xport *, uint32_t skb_priority,
                                    uint8_t *dscp);
 
 static void do_xlate_egress_action(const struct ofpact *a, struct xlate_ctx *ctx);
-
+static void do_egress_compare(struct xlate_ctx *ctx);
 
 void
 xlate_ofproto_set(struct ofproto_dpif *ofproto, const char *name,
@@ -1542,7 +1542,7 @@ compose_output_action__(struct xlate_ctx *ctx, ofp_port_t ofp_port,
 
     /* If 'struct flow' gets additional metadata, we'll need to zero it out
      * before traversing a patch port. */
-    BUILD_ASSERT_DECL(FLOW_WC_SEQ == 21);
+    BUILD_ASSERT_DECL(FLOW_WC_SEQ == 22);
 
     if (!xport) {
         xlate_report(ctx, "Nonexistent output port");
@@ -1710,6 +1710,10 @@ xlate_table_action(struct xlate_ctx *ctx,
         fprintf(stderr, "%u-----\n", ctx->table_id);
 	VLOG_DBG("Performing table action for table_id:  %"PRIu8", in_port:  %"PRIx16, table_id, in_port);
 
+	if(ctx->table_id == SIMON_TABLE_EGRESS_START) {
+	    do_egress_compare(ctx);
+	}
+
         /* Look up a flow with 'in_port' as the input port.  Then restore the
          * original input port (otherwise OFPP_NORMAL and OFPP_IN_PORT will
          * have surprising behavior). */
@@ -1783,6 +1787,87 @@ xlate_table_action(struct xlate_ctx *ctx,
                     MAX_RESUBMIT_RECURSION);
     }
 }
+
+
+
+static void
+do_egress_compare(struct xlate_ctx *ctx)
+{
+    struct flow *flow = &ctx->xin->flow;
+    uint32_t *regs = flow->regs;
+
+    uint64_t orig_dl_src, flow_dl_src;
+    uint64_t orig_dl_dst, flow_dl_dst;
+
+    uint32_t orig_nw_src, flow_nw_src;
+    uint32_t orig_nw_dst, flow_nw_dst;
+
+    uint32_t orig_tp_src, flow_tp_src;
+    uint32_t orig_tp_dst, flow_tp_dst;
+
+    uint32_t orig_dl_type;
+    uint32_t orig_ip_proto;
+
+    /* First, load all of the original values for the fields from the registers. */
+
+    /* Data-link layer */
+    orig_dl_type = SIMON_REG_DL_TYPE(regs);
+
+    /* Our inputs for dl_src and dl_dst need to be combined from two registers before comparing. */
+    orig_dl_src = (((uint64_t)SIMON_REG_DL_SRC_HI(flow->regs)) << 32) | ((uint64_t)SIMON_REG_DL_SRC_LO(flow->regs));
+    flow_dl_src = eth_addr_to_uint64(flow->dl_src);
+
+    orig_dl_dst = (((uint64_t)SIMON_REG_DL_DST_HI(flow->regs)) << 32) | ((uint64_t)SIMON_REG_DL_DST_LO(flow->regs));
+    flow_dl_dst = eth_addr_to_uint64(flow->dl_dst);
+
+    /* Network layer */
+    orig_ip_proto = SIMON_REG_IP_PROTO(regs);
+
+    orig_nw_src = SIMON_REG_IP_SRC(regs);
+    flow_nw_src = ntohl(flow->nw_src);
+
+    orig_nw_dst = SIMON_REG_IP_DST(regs);
+    flow_nw_dst = ntohl(flow->nw_dst);
+
+    /* Transport layer */
+    orig_tp_src = SIMON_REG_TP_SRC(regs);
+    flow_tp_src = ntohs(flow->tp_src);
+
+    orig_tp_dst = SIMON_REG_TP_DST(regs);
+    flow_tp_dst = ntohs(flow->tp_dst);
+
+    VLOG_DBG("Performing egress compare, reg:  %"PRIx64",  dl_src:  %"PRIx64,
+	     orig_dl_src, flow_dl_src);
+
+
+    VLOG_DBG("Performing egress compare, reg:  %"PRIx32",  ip_proto:  %"PRIx8,
+	     orig_ip_proto, flow->nw_proto);
+
+    /* Now perform the comparisons, overwriting the values in the registers. */
+
+    /* Data-link layer */
+    SIMON_REG_EQ(regs, DL_TYPE,   orig_dl_type, ntohs(flow->dl_type));
+
+    SIMON_REG_EQ(regs, DL_SRC_SRC, orig_dl_src, flow_dl_src);
+    SIMON_REG_EQ(regs, DL_SRC_DST, orig_dl_src, flow_dl_dst);
+    SIMON_REG_EQ(regs, DL_DST_SRC, orig_dl_dst, flow_dl_src);
+    SIMON_REG_EQ(regs, DL_DST_DST, orig_dl_dst, flow_dl_dst);
+
+    /* Network layer */
+    SIMON_REG_EQ(regs, IP_PROTO, orig_ip_proto, flow->nw_proto);
+
+    SIMON_REG_EQ(regs, IP_SRC_SRC, orig_nw_src, flow_nw_src);
+    SIMON_REG_EQ(regs, IP_SRC_DST, orig_nw_src, flow_nw_dst);
+    SIMON_REG_EQ(regs, IP_DST_SRC, orig_nw_dst, flow_nw_src);
+    SIMON_REG_EQ(regs, IP_DST_DST, orig_nw_dst, flow_nw_dst);
+
+    /* Transport-layer fields */
+    SIMON_REG_EQ(regs, TP_SRC_SRC, orig_tp_src, flow_tp_src);
+    SIMON_REG_EQ(regs, TP_SRC_DST, orig_tp_src, flow_tp_dst);
+    SIMON_REG_EQ(regs, TP_DST_SRC, orig_tp_dst, flow_tp_src);
+    SIMON_REG_EQ(regs, TP_DST_DST, orig_tp_dst, flow_tp_dst);
+}
+
 
 static void
 xlate_ofpact_resubmit(struct xlate_ctx *ctx,
@@ -2591,6 +2676,7 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
 
 
 }
+
 
 static void
 do_xlate_egress_action(const struct ofpact *a, struct xlate_ctx *ctx)

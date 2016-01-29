@@ -36,9 +36,9 @@ struct ofpbuf;
 /* This sequence number should be incremented whenever anything involving flows
  * or the wildcarding of flows changes.  This will cause build assertion
  * failures in places which likely need to be updated. */
-#define FLOW_WC_SEQ 21
+#define FLOW_WC_SEQ 22
 
-#define FLOW_N_REGS 8
+#define FLOW_N_REGS 16
 BUILD_ASSERT_DECL(FLOW_N_REGS <= NXM_NX_MAX_REGS);
 
 /* Used for struct flow's dl_type member for frames that have no Ethernet
@@ -119,8 +119,8 @@ BUILD_ASSERT_DECL(sizeof(struct flow) % 4 == 0);
 #define FLOW_U32S (sizeof(struct flow) / 4)
 
 /* Remember to update FLOW_WC_SEQ when changing 'struct flow'. */
-BUILD_ASSERT_DECL(sizeof(struct flow) == sizeof(struct flow_tnl) + 160 &&
-                  FLOW_WC_SEQ == 21);
+BUILD_ASSERT_DECL(sizeof(struct flow) == sizeof(struct flow_tnl) + (160 + 32) &&
+                  FLOW_WC_SEQ == 22);
 
 /* Represents the metadata fields of struct flow. */
 struct flow_metadata {
