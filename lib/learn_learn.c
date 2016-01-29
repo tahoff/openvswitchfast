@@ -255,11 +255,13 @@ learn_learn_from_openflow(const struct nx_action_learn_learn *nal,
             break;
         }
         /* Check that the arguments don't overrun the end of the action. */
-        if ((char *) spec_end - (char *) p == 0) {
+        if ((char *) spec_end - (char *) p <= 0) {
             break;
         }
 
-	deferal_count = get_u8(&p);
+        deferal_count = get_u8(&p);
+
+        fprintf(stderr, "got u8\n");
 
         spec = ofpbuf_put_zeros(ofpacts, sizeof *spec);
         learn = ofpacts->l2;
@@ -318,8 +320,8 @@ learn_learn_from_openflow(const struct nx_action_learn_learn *nal,
     ofpacts_len = ntohl(nal->ofpacts_len);
 
     // Create buffers
-    ofpbuf_init(&learn_ofpacts, 32);
-    ofpbuf_init(&converted_learn_ofpacts, 32);
+    ofpbuf_init(&learn_ofpacts, 1024);
+    ofpbuf_init(&converted_learn_ofpacts, 1024);
 
     // But data in learn_ofpacts
     //ofpbuf_put_zeros(ofpacts, ofpacts_len);
@@ -357,9 +359,12 @@ learn_learn_from_openflow(const struct nx_action_learn_learn *nal,
 
     // TODO Ensure this change was okay, there will be data
     // between the p and end because of the action data.
-    if (!is_all_zeros(p, (char *) spec_end - (char *) p)) {
-        return OFPERR_OFPBAC_BAD_ARGUMENT;
-    }
+    if ((char *) spec_end - (char *) p <= 0) {
+        return 0;
+    } 
+    //if (!is_all_zeros(p, (char *) spec_end - (char *) p)) {
+    //    return OFPERR_OFPBAC_BAD_ARGUMENT;
+    //}
 
     if (learn->ofpacts_len == 0 && nal->ofpacts_len > 0) {
         fprintf(stderr, "******************* learn_learn_from_openflow loses actions ****\n");
