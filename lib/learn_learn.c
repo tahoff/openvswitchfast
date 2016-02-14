@@ -579,12 +579,13 @@ learn_learn_to_nxast(const struct ofpact_learn_learn *learn,
 
     nal = ofpbuf_at_assert(openflow, start_ofs, sizeof *nal);
     nal->len = htons(openflow->size - start_ofs);
+    nal->ofpacts_len = htonl(ofpact_len);
 
     fprintf(stderr, "nal->len=%u ofpact_len=%u len=%u openflow->size=%u\n",
             ntohs(nal->len), ofpact_len, len, openflow->size);
 
     if (learn->ofpacts_len > 0 && nal->ofpacts_len == 0) {
-        fprintf(stderr, "******************* learn_learn_to_nxast loses actions ****\n");
+        fprintf(stderr, "******************* learn_learn_to_nxast loses actions **** %u %u\n", learn->ofpacts_len, nal->ofpacts_len);
     }
 
 }

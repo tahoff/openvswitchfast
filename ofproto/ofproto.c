@@ -4436,7 +4436,12 @@ void learn_delete_execute(const struct ofpact_learn_delete *learn,
     }
 
     fm->modify_cookie = fm->new_cookie != htonll(UINT64_MAX);
-    fm->command = OFPFC_DELETE;
+
+    if (fm->priority == OFP_DEFAULT_PRIORITY) {
+        fm->command = OFPFC_DELETE;
+    } else {
+        fm->command = OFPFC_DELETE_STRICT;
+    }
     fm->buffer_id = UINT32_MAX;
     fm->out_port = OFPP_NONE;
     fm->flags = learn->flags;
