@@ -133,7 +133,6 @@ learn_delete_from_openflow(const struct nx_action_learn_delete *nal,
 
         struct ofpact_learn_spec *spec;
         uint16_t header = ntohs(get_be16(&p));
-        uint8_t deferal_count = get_u8(&p);
 
         if (!header) {
             break;
@@ -144,6 +143,7 @@ learn_delete_from_openflow(const struct nx_action_learn_delete *nal,
         spec = ofpbuf_put_zeros(ofpacts, sizeof *spec);
         learn = ofpacts->l2;
         learn->n_specs++;
+
 
         spec->src_type = header & NX_LEARN_SRC_MASK;
         spec->dst_type = header & NX_LEARN_DST_MASK;
@@ -182,7 +182,11 @@ learn_delete_from_openflow(const struct nx_action_learn_delete *nal,
             spec->dst_type == NX_LEARN_DST_LOAD) {
             get_subfield(spec->n_bits, &p, &spec->dst);
         }
+        
+        uint8_t deferal_count = get_u8(&p);
+        spec->defer_count = deferal_count;
     }
+    
     ofpact_update_len(ofpacts, &learn->ofpact);
 
     if ((char *) end - (char *) p <= 0) {
@@ -297,8 +301,6 @@ learn_delete_to_nxast(const struct ofpact_learn_delete *learn,
     for (spec = learn->specs; spec < &learn->specs[learn->n_specs]; spec++) {
         put_u16(openflow, spec->n_bits | spec->dst_type | spec->src_type);
 
-        // Add the defer count
-        ofpbuf_put(openflow, &spec->defer_count, sizeof spec->defer_count);
 
         if (spec->src_type == NX_LEARN_SRC_FIELD) {
             put_u32(openflow, spec->src.field->nxm_header);
@@ -316,6 +318,9 @@ learn_delete_to_nxast(const struct ofpact_learn_delete *learn,
             put_u32(openflow, spec->dst.field->nxm_header);
             put_u16(openflow, spec->dst.ofs);
         }
+        
+        // Add the defer count
+        ofpbuf_put(openflow, &spec->defer_count, sizeof spec->defer_count);
     }
 
     if ((openflow->size - start_ofs) % 8) {
@@ -626,13 +631,13 @@ learn_delete_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
         } else if (!strcmp(name, "cookie")) {
             learn->cookie = strtoull(value, NULL, 0);
         } else if (!strcmp(name, "use_atomic_table")) {
-	    if(!strcmp(value, "INGRESS")) {
-		learn->table_spec = DELETE_USING_INGRESS_ATOMIC_TABLE;
-	    } else if(!strcmp(value, "EGRESS")) {
-		learn->table_spec = DELETE_USING_EGRESS_ATOMIC_TABLE;
-	    } else {
-		return xasprintf("%s: Invalid counter spec, must be 'INGRESS' or 'EGRESS'", orig);
-	    }
+            if(!strcmp(value, "INGRESS")) {
+                learn->table_spec = DELETE_USING_INGRESS_ATOMIC_TABLE;
+            } else if(!strcmp(value, "EGRESS")) {
+                learn->table_spec = DELETE_USING_EGRESS_ATOMIC_TABLE;
+            } else {
+                return xasprintf("%s: Invalid counter spec, must be 'INGRESS' or 'EGRESS'", orig);
+            }
         } else if (!strcmp(name, "use_rule_table")) {
             if (atoi(value) != 0) {
                 learn->table_spec = DELETE_USING_RULE_TABLE;
@@ -641,12 +646,36 @@ learn_delete_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
             struct ofpact_learn_spec *spec;
             char *error;
 
+            uint8_t deferral_count;
+            char *defer_str;
+            deferral_count = 0xff;
+
             spec = ofpbuf_put_zeros(ofpacts, sizeof *spec);
             learn = ofpacts->l2;
             learn->n_specs++;
 
-            error = learn_delete_parse_spec(orig, name, value, spec);
-            spec->defer_count = 0;
+            defer_str = strstr(value, "(defer");
+
+            if (!defer_str) {
+                error = learn_delete_parse_spec(orig, name, value, spec);
+            } else {
+                 int deferral_err;
+                 char val_str[defer_str - value + 1];
+                 deferral_err = sscanf(strstr(value, "(defer"),
+                                       "(defer=%" SCNu8 ")",
+                                       &deferral_count);
+                 if (deferral_err == 0) {
+                     return xstrdup("deferral syntax: (defer=#)");
+                 }
+
+                 memcpy(val_str, value, defer_str - value);
+                 val_str[defer_str - value] = '\0';
+                 
+                 error = learn_delete_parse_spec(orig, name, val_str, spec);
+            }
+
+            spec->defer_count = deferral_count;
+            
             if (error) {
                 return error;
             }
@@ -774,6 +803,11 @@ learn_delete_format(const struct ofpact_learn_delete *learn, struct ds *s)
             mf_format_subfield(&spec->src, s);
             break;
 
+        }
+
+        if (spec->defer_count < 0xff) {
+            ds_put_format(s, "(defer=%" PRIu8 ")", spec->defer_count);
+            //ds_put_cstr(s, "(some defer)");
         }
     }
     ds_put_char(s, ')');

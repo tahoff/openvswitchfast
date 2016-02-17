@@ -4626,15 +4626,23 @@ learn_learn_execute(const struct ofpact_learn_learn *learn,
     struct ofpact *learn_actions;
     learn_actions = (struct ofpact *) end;
 
-    // Do spec substitution as needed
-    do_deferral(learn_actions, learn->ofpacts_len, flow);
+    // TODO - Do a copy of the data, in learn_actions
+    struct ofpact *copied_learn_actions;
+    copied_learn_actions = xmalloc(learn->ofpacts_len);
+    copied_learn_actions = memcpy(copied_learn_actions,
+                                  learn_actions, learn->ofpacts_len); 
 
-    ofpbuf_put(ofpacts, learn_actions, learn->ofpacts_len);
+    // Do spec substitution as needed
+    do_deferral(copied_learn_actions, learn->ofpacts_len, flow);
+
+    ofpbuf_put(ofpacts, copied_learn_actions, learn->ofpacts_len);
 
     ofpact_pad(ofpacts);
 
     fm->ofpacts = ofpacts->data;
     fm->ofpacts_len = ofpacts->size;
+
+    free(copied_learn_actions);
 }
 
 /*
