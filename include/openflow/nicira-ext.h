@@ -950,9 +950,10 @@ struct nx_action_learn_learn {
     ovs_be16 fin_hard_timeout;  /* Hard timeout after FIN, if nonzero. */
     ovs_be32 n_specs;
     ovs_be32 ofpacts_len;
+    ovs_be32 spec_len;
     uint8_t rear_padding;       /* Number of bytes padded to rear */
     uint8_t table_spec;
-    uint8_t pad[6];
+    uint8_t pad[2];
     /* Followed by a sequence of flow_mod_spec elements, 
      * then followed by action data */
 };

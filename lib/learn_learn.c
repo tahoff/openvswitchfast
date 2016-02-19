@@ -132,22 +132,22 @@ change_spec_values(struct ofpact_learn_spec *start,
         } else {
             // Parse value into an mf_value
             const struct mf_field *dst;
-	    union mf_value imm;
+            union mf_value imm;
 
-	    dst = spec->src.field;
-	    mf_get_value(dst, flow, &imm);
-	    //dst = mf_read_subfield(&spec->src, flow, &imm);
+            dst = spec->src.field;
+            mf_get_value(dst, flow, &imm);
+            //dst = mf_read_subfield(&spec->src, flow, &imm);
 
-	    // Memset & memcpy value into spec->src_imm
-	    memset(&spec->src_imm, 0, sizeof spec->src_imm);
-	    memcpy(&spec->src_imm.u8[sizeof spec->src_imm - dst->n_bytes],
-			   &imm, dst->n_bytes);
+            // Memset & memcpy value into spec->src_imm
+            memset(&spec->src_imm, 0, sizeof spec->src_imm);
+            memcpy(&spec->src_imm.u8[sizeof spec->src_imm - dst->n_bytes],
+                   &imm, dst->n_bytes);
 
-	    spec->n_bits = spec->src.n_bits;
+            spec->n_bits = spec->src.n_bits;
 
-	    // Update the spec's src_type
-	    spec->src_type = NX_LEARN_SRC_IMMEDIATE;
-	    spec->defer_count = 0xff;
+            // Update the spec's src_type
+            spec->src_type = NX_LEARN_SRC_IMMEDIATE;
+            spec->defer_count = 0xff;
 	  }   
     }
 }
@@ -270,8 +270,10 @@ learn_learn_from_openflow(const struct nx_action_learn_learn *nal,
         return OFPERR_OFPBAC_BAD_ARGUMENT;
     }
 
+    p = nal + 1;
     end = (char *) nal + ntohs(nal->len);
     spec_end = (char *) end - ntohl(nal->ofpacts_len) - nal->rear_padding;
+    spec_end = (char *) p + ntohl(nal->spec_len);
     //spec_end = (char *) (nal + 1) + ntohl(nal->n_specs)*sizeof(struct ofpact_learn_spec);
 
     fprintf(stderr, "learn_learn_from_openflow - computing nal=%p end=%p spec_end=%p\n",
@@ -311,12 +313,12 @@ learn_learn_from_openflow(const struct nx_action_learn_learn *nal,
         learn = ofpacts->l2;
         learn->n_specs++;
 
-        fprintf(stderr, "spec=%p spec->n_bits=%u\n", spec, spec->n_bits);
-
         spec->src_type = header & NX_LEARN_SRC_MASK;
         spec->dst_type = header & NX_LEARN_DST_MASK;
         spec->n_bits = header & NX_LEARN_N_BITS_MASK;
 
+        fprintf(stderr, "spec=%p spec->n_bits=%u\n", spec, spec->n_bits);
+        
         /* Check for valid src and dst type combination. */
         if (spec->dst_type == NX_LEARN_DST_MATCH ||
             spec->dst_type == NX_LEARN_DST_LOAD ||
@@ -538,6 +540,7 @@ learn_learn_to_nxast(const struct ofpact_learn_learn *learn,
     unsigned int len;
     unsigned int n_specs;
     unsigned int ofpact_len;
+    unsigned int spec_len;
     const struct ofpact *learn_actions;
 
     fprintf(stderr, "learn_learn_to_nxast learn->n_specs=%u learn->ofpacts_len=%u openflow.size=%u\n",
@@ -563,6 +566,8 @@ learn_learn_to_nxast(const struct ofpact_learn_learn *learn,
     end = &spec[learn->n_specs];
 
     fprintf(stderr, "learn_learn_to_nxast spec=%p end=%p\n", spec, end);
+
+    len = openflow->size;
 
     for (spec = (const struct ofpact_learn_spec *) learn->data;
             spec < end; spec++) {
@@ -608,7 +613,8 @@ learn_learn_to_nxast(const struct ofpact_learn_learn *learn,
         n_specs++;
     }
 
-    // TODO Add actions.
+    // Add actions.
+    nal->spec_len = htonl(openflow->size - len);
     len = openflow->size;
 
     learn_actions = (const struct ofpact *) end;
