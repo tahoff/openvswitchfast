@@ -25,6 +25,7 @@ TESTSUITE_AT = \
 	tests/cfm.at \
 	tests/lacp.at \
 	tests/learn.at \
+	tests/learn_delete.at \
 	tests/vconn.at \
 	tests/file_name.at \
 	tests/aes128.at \
