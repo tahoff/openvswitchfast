@@ -226,7 +226,6 @@ learn_delete_check(const struct ofpact_learn_delete *learn,
         case NX_LEARN_DST_MATCH:
             error = mf_check_src(&spec->dst, &match.flow);
             if (error) {
-                fprintf(stderr, "thoff: learn_check err2\n");
                 return error;
             }
 
@@ -236,7 +235,6 @@ learn_delete_check(const struct ofpact_learn_delete *learn,
         case NX_LEARN_DST_LOAD:
             error = mf_check_dst(&spec->dst, &match.flow);
             if (error) {
-                fprintf(stderr, "thoff: learn_check err3\n");
                 return error;
             }
             break;
@@ -287,8 +285,6 @@ learn_delete_to_nxast(const struct ofpact_learn_delete *learn,
     const struct ofpact_learn_spec *spec;
     struct nx_action_learn_delete *nal;
     size_t start_ofs;
-
-    fprintf(stderr, "learn_delete_to_nxast\n");
 
     start_ofs = openflow->size;
     nal = ofputil_put_NXAST_LEARN_DELETE(openflow);
@@ -691,10 +687,6 @@ learn_delete_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
 
     ofpact_update_len(ofpacts, &learn->ofpact);
     
-    int j;
-    for (j = 0; j < learn->ofpact.len; j++) {
-        fprintf(stderr, "%d ", *(ptr + j));
-    }
     return NULL;
 }
 

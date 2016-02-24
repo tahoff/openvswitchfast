@@ -839,7 +839,6 @@ vconn_transact_noreply(struct vconn *vconn, struct ofpbuf *request,
     if (error) {
         ofpbuf_delete(request);
         return error;
-        fprintf(stderr, "thoff: lib/vconn.c - vconn_transact_noreply error 1\n");
     }
 
     /* Send barrier. */
@@ -848,7 +847,6 @@ vconn_transact_noreply(struct vconn *vconn, struct ofpbuf *request,
     error = vconn_send_block(vconn, barrier);
     if (error) {
         ofpbuf_delete(barrier);
-        fprintf(stderr, "thoff: lib/vconn.c - vconn_transact_noreply error 2\n");
         return error;
     }
 
@@ -861,7 +859,6 @@ vconn_transact_noreply(struct vconn *vconn, struct ofpbuf *request,
         if (error) {
             ofpbuf_delete(*replyp);
             *replyp = NULL;
-            fprintf(stderr, "thoff: lib/vconn.c - vconn_transact_noreply error 3\n");
             return error;
         }
 
@@ -876,7 +873,6 @@ vconn_transact_noreply(struct vconn *vconn, struct ofpbuf *request,
         } else {
             ofpbuf_delete(msg);
             if (msg_xid == barrier_xid) {
-                fprintf(stderr, "thoff: lib/vconn.c - vconn_transact_noreply() return 0\n");
                 return 0;
             } else {
                 VLOG_DBG_RL(&bad_ofmsg_rl, "%s: reply with xid %08"PRIx32
@@ -886,7 +882,6 @@ vconn_transact_noreply(struct vconn *vconn, struct ofpbuf *request,
             }
         }
     }
-    fprintf(stderr, "thoff: lib/vconn.c - vconn_transact_noreply end\n");
 }
 
 /* vconn_transact_noreply() for a list of "struct ofpbuf"s, sent one by one.

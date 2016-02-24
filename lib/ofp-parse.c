@@ -778,7 +778,6 @@ parse_named_action(enum ofputil_action_code code,
         NOT_REACHED();
 
     case OFPUTIL_NXAST_LEARN:
-        fprintf(stderr, "Calling learn_parse\n");
         error = learn_parse(arg, ofpacts);
         break;
 
@@ -796,8 +795,6 @@ parse_named_action(enum ofputil_action_code code,
 
     case OFPUTIL_NXAST_TIMEOUT_ACT:
         error = timeout_act_parse(arg, ofpacts);
-        fprintf(stderr, "POST TIMEOUT_ACT_PARSING ofpacts.size=%u %s\n",
-                ofpacts->size, error);
         break;
 
     case OFPUTIL_NXAST_EXIT:
@@ -1009,18 +1006,14 @@ str_to_inst_ofpacts(char *str, struct ofpbuf *ofpacts,
     int prev_type = -1;
     int n_actions = 0;
 
-    fprintf(stderr, "thoff: str_to_inst_ofpacts() called\n");
-
     pos = str;
     while (ofputil_parse_key_value(&pos, &inst, &arg)) {
         type = ovs_instruction_type_from_name(inst);
         if (type < 0) {
-            fprintf(stderr, " str_to_inst_ofpacts 1\n");
             char *error = str_to_ofpact__(pos, inst, arg, ofpacts, n_actions,
                                           usable_protocols);
             if (error) {
                 ofpacts->size = orig_size;
-                fprintf(stderr, "str_to_inst_ofpacts ERROR\n");
                 return error;
             }
 
@@ -1030,12 +1023,10 @@ str_to_inst_ofpacts(char *str, struct ofpbuf *ofpacts,
                 continue;
             }
         } else if (type == OVSINST_OFPIT11_APPLY_ACTIONS) {
-            fprintf(stderr, " str_to_inst_ofpacts 2\n");
             ofpacts->size = orig_size;
             return xasprintf("%s isn't supported. Just write actions then "
                              "it is interpreted as apply_actions", inst);
         } else {
-            fprintf(stderr, " str_to_inst_ofpacts 3\n");
             char *error = parse_named_instruction(type, arg, ofpacts,
                                                   usable_protocols);
             if (error) {
@@ -1060,7 +1051,6 @@ str_to_inst_ofpacts(char *str, struct ofpbuf *ofpacts,
         n_actions++;
     }
     ofpact_pad(ofpacts);
-    fprintf(stderr, "str_to_inst_ofpacts ofpacts.size=%u\n", ofpacts->size);
 
     return NULL;
 }
@@ -1137,8 +1127,6 @@ parse_ofp_str__(struct ofputil_flow_mod *fm, int command, char *string,
     char *save_ptr = NULL;
     char *act_str = NULL;
     char *name;
-
-    fprintf(stderr, "--------------- parse_ofp_str__() called %s\n", string);
 
     *usable_protocols = OFPUTIL_P_ANY;
 
@@ -1284,7 +1272,6 @@ parse_ofp_str__(struct ofputil_flow_mod *fm, int command, char *string,
                     fm->modify_cookie = true;
                 }
             } else if (mf_from_name(name)) {
-                fprintf(stderr, "parse_field calling\n");
                 error = parse_field(mf_from_name(name), value, &fm->match,
                                     usable_protocols);
             } else if (!strcmp(name, "duration")
@@ -1380,7 +1367,6 @@ parse_ofp_str(struct ofputil_flow_mod *fm, int command, const char *str_,
         fm->ofpacts_len = 0;
     }
 
-    fprintf(stderr, "fm->ofpacts=%p\n", fm->ofpacts);
     free(string);
     return error;
 }

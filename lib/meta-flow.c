@@ -1165,7 +1165,6 @@ void
 mf_get_value(const struct mf_field *mf, const struct flow *flow,
              union mf_value *value)
 {
-    fprintf(stderr, "mf_get_value: mf->id=%d reverse=%d\n", mf->id, ntohs(mf->id));
     switch (mf->id) {
     case MFF_TUN_ID:
         value->be64 = flow->tunnel.tun_id;
@@ -2135,16 +2134,13 @@ mf_check__(const struct mf_subfield *sf, const struct flow *flow,
         VLOG_WARN_RL(&rl, "unknown %s field", type);
         return OFPERR_OFPBAC_BAD_SET_TYPE;
     } else if (!sf->n_bits) {
-        fprintf(stderr, "mf_check__ 1\n");
         VLOG_WARN_RL(&rl, "zero bit %s field %s", type, sf->field->name);
         return OFPERR_OFPBAC_BAD_SET_LEN;
     } else if (sf->ofs >= sf->field->n_bits) {
-        fprintf(stderr, "mf_check__ 2\n");
         VLOG_WARN_RL(&rl, "bit offset %d exceeds %d-bit width of %s field %s",
                      sf->ofs, sf->field->n_bits, type, sf->field->name);
         return OFPERR_OFPBAC_BAD_SET_LEN;
     } else if (sf->ofs + sf->n_bits > sf->field->n_bits) {
-        fprintf(stderr, "mf_check__ 3\n");
         VLOG_WARN_RL(&rl, "bit offset %d and width %d exceeds %d-bit width "
                      "of %s field %s", sf->ofs, sf->n_bits,
                      sf->field->n_bits, type, sf->field->name);

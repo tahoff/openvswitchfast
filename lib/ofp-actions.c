@@ -660,8 +660,6 @@ ofpacts_pull_actions(struct ofpbuf *openflow, unsigned int actions_len,
     const union ofp_action *actions;
     enum ofperr error;
 
-    fprintf(stderr, "thoff: ofpacts_pull_actions %u\n", actions_len);
-
     ofpbuf_clear(ofpacts);
 
     if (actions_len % OFP_ACTION_ALIGN != 0) {
@@ -1239,9 +1237,6 @@ ofpact_check__(const struct ofpact *a, struct flow *flow, ofp_port_t max_ports,
 {
     const struct ofpact_enqueue *enqueue;
 
-    fprintf(stderr, "ofpact_check__ a=%p flow=%p max_ports=%u table_id=%u a->len=%u\n",
-            a, flow, max_ports, table_id, a->len);
-
     switch (a->type) {
     case OFPACT_OUTPUT:
         return ofputil_check_output_port(ofpact_get_OUTPUT(a)->port,
@@ -1369,10 +1364,7 @@ ofpacts_check(const struct ofpact ofpacts[], size_t ofpacts_len,
     ovs_be16 dl_type = flow->dl_type;
     enum ofperr error = 0;
 
-    fprintf(stderr, "ofpacts_check called ofpacts_len=%u\n", ofpacts_len);
-
     OFPACT_FOR_EACH (a, ofpacts, ofpacts_len) {
-        fprintf(stderr, "ofpact: %p ofpacts: %p  a->len=%u \n", a, ofpacts, a->len);
         error = ofpact_check__(a, flow, max_ports, table_id);
         if (error) {
             break;
@@ -1389,8 +1381,6 @@ ofpacts_verify(const struct ofpact ofpacts[], size_t ofpacts_len)
 {
     const struct ofpact *a;
     enum ovs_instruction_type inst;
-
-    fprintf(stderr, "ofpacts_verify ofpacts=%p ofpacts_len=%u\n", ofpacts, ofpacts_len);
 
     inst = OVSINST_OFPIT11_APPLY_ACTIONS;
     OFPACT_FOR_EACH (a, ofpacts, ofpacts_len) {
@@ -1555,7 +1545,6 @@ ofpact_sample_to_nxast(const struct ofpact_sample *os,
 static void
 ofpact_to_nxast(const struct ofpact *a, struct ofpbuf *out)
 {
-    fprintf(stderr, "thoff: ofpact_to_nxast called a->len=%u\n", a->len);
     switch (a->type) {
     case OFPACT_CONTROLLER:
         ofpact_controller_to_nxast(ofpact_get_CONTROLLER(a), out);
@@ -1628,7 +1617,6 @@ ofpact_to_nxast(const struct ofpact *a, struct ofpbuf *out)
         break;
 
     case OFPACT_LEARN_LEARN:
-        fprintf(stderr, "calling learn_learn_to_nxast\n");
         learn_learn_to_nxast(ofpact_get_LEARN_LEARN(a), out);
         break;
 
@@ -2251,10 +2239,8 @@ ofpact_format(const struct ofpact *a, struct ds *s)
     const struct ofpact_sample *sample;
     ofp_port_t port;
 
-    fprintf(stderr, "ofpact_format a=%p a->type=%u\n", a, a->type);
     switch (a->type) {
     case OFPACT_OUTPUT:
-        fprintf(stderr, "ofpact_format OFPACT_OUTPUT\n");
         port = ofpact_get_OUTPUT(a)->port;
         if (ofp_to_u16(port) < ofp_to_u16(OFPP_MAX)) {
             ds_put_format(s, "output:%"PRIu16, port);
@@ -2430,7 +2416,6 @@ ofpact_format(const struct ofpact *a, struct ds *s)
         break;
 
     case OFPACT_LEARN:
-        fprintf(stderr, "ofpact_format calling learn_format\n");
         learn_format(ofpact_get_LEARN(a), s);
         break;
 

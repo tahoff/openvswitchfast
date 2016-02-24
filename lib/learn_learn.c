@@ -56,8 +56,6 @@ get_matching_bracket(char *str) {
     int count;
     count = 0;
 
-    fprintf(stderr, "get_matching_bracket %s\n", str);
-
     instance = str;
 
     while (*instance != '\0') {
@@ -123,7 +121,6 @@ change_spec_values(struct ofpact_learn_spec *start,
     struct ofpact_learn_spec *spec;
 
     for (spec = start; spec < end; spec++) {
-        fprintf(stderr, "populate_deferral iter\n");
         // TODO TEST
         if (spec->defer_count == 0xff) {
             continue;

@@ -1705,9 +1705,7 @@ xlate_table_action(struct xlate_ctx *ctx,
 
 	uint8_t counter_val;
 
-        fprintf(stderr, "----- xlate_table_action %u %u ", ctx->table_id, table_id);
         ctx->table_id = table_id;
-        fprintf(stderr, "%u-----\n", ctx->table_id);
 	VLOG_DBG("Performing table action for table_id:  %"PRIu8", in_port:  %"PRIx16, table_id, in_port);
 
 	if(ctx->table_id == SIMON_TABLE_EGRESS_START) {
@@ -1733,7 +1731,6 @@ xlate_table_action(struct xlate_ctx *ctx,
 
             struct xport *xport;
 
-            fprintf(stderr, "xlate_table_action 3\n");
 	    VLOG_WARN("Sending miss for table %"PRIu8, table_id);
 
             /* XXX
@@ -1876,8 +1873,6 @@ xlate_ofpact_resubmit(struct xlate_ctx *ctx,
     ofp_port_t in_port;
     uint8_t table_id;
 
-    fprintf(stderr, "xlate_ofpact_resumbit\n");
-
     in_port = resubmit->in_port;
     if (in_port == OFPP_IN_PORT) {
         in_port = ctx->xin->flow.in_port.ofp_port;
@@ -1920,7 +1915,6 @@ execute_controller_action(struct xlate_ctx *ctx, int len,
     struct ofpbuf *packet;
     struct flow key;
 
-    fprintf(stderr, "EXECUTE_CONTROLLER_ACTION %u\n", ctx->table_id);
 
     ovs_assert(!ctx->xout->slow || ctx->xout->slow == SLOW_CONTROLLER);
     ctx->xout->slow = SLOW_CONTROLLER;
@@ -2398,10 +2392,6 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
     uint8_t resubmit_done;
     resubmit_done = 0;
 
-    fprintf(stderr, "do_xlate_actions %u %"PRIu16 " %zu\n",
-        ctx->table_id, ctx->xin->flow.in_port.ofp_port,
-        ofpacts_len);
-
     OFPACT_FOR_EACH (a, ofpacts, ofpacts_len) {
         struct ofpact_controller *controller;
         const struct ofpact_metadata *metadata;
@@ -2667,8 +2657,6 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
     if (ctx->table_id == 0 && !resubmit_done && ctx->rule) {
         // resubmit to table_id + 1
         //ctx->table_id = ctx->table_id + 1;
-
-        fprintf(stderr, "TABLE_ZERO NO_RESUB  %p\n", ctx->rule);
 
         xlate_table_action(ctx, ctx->xin->flow.in_port.ofp_port,
             ctx->table_id + 1, false);

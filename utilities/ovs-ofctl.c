@@ -474,7 +474,6 @@ dump_stats_transaction(struct vconn *vconn, struct ofpbuf *request)
 
     // TODO Check that the input is the same
 
-    fprintf(stderr, "thoff: dump_stats_transaction called\n");
     ofpraw_decode_partial(&request_raw, request->data, request->size);
     reply_raw = ofpraw_stats_request_to_reply(request_raw,
                                               request_oh->version);
@@ -554,7 +553,6 @@ transact_noreply(struct vconn *vconn, struct ofpbuf *request)
 {
     struct list requests;
 
-    fprintf(stderr, "transact_noreply called\n");
     list_init(&requests);
     list_push_back(&requests, &request->list_node);
     transact_multiple_noreply(vconn, &requests);
@@ -699,8 +697,6 @@ fetch_port_by_stats(const char *vconn_name,
     ovs_be32 send_xid;
     bool done = false;
     bool found = false;
-
-    fprintf(stderr, "thoff: fetch_port_by_stats called\n");
 
     request = ofpraw_alloc(OFPRAW_OFPST_PORT_DESC_REQUEST, OFP10_VERSION, 0);
     send_xid = ((struct ofp_header *) request->data)->xid;
@@ -876,21 +872,18 @@ prepare_dump_flows(int argc, char *argv[], bool aggregate,
     struct vconn *vconn;
     char *error;
 
-    fprintf(stderr, "thoff: prepare_dump_flows called \n");
     error = parse_ofp_flow_stats_request_str(&fsr, aggregate,
                                              argc > 2 ? argv[2] : "",
                                              &usable_protocols);
     if (error) {
         ovs_fatal(0, "%s", error);
     }
-    fprintf(stderr, "ofputil_flow_stats_request -> aggregate=%u cookie=%u cookie_mask=%u out_port=%u table_id=%u\n", fsr.aggregate, fsr.cookie, fsr.cookie_mask, fsr.out_port, fsr.table_id);
 
     //fprintf(stderr, "thoff: prepare_dump_flows about to create vconn\n");
     protocol = open_vconn(argv[1], &vconn);
     protocol = set_protocol_for_flow_dump(vconn, protocol, usable_protocols);
     //fprintf(stderr, "thoff: prepare_dump_flows calling ofputil_encode_flow_stats_request\n");
     *requestp = ofputil_encode_flow_stats_request(&fsr, protocol);
-    fprintf(stderr, "ofputil_flow_stats_request -> aggregate=%u cookie=%u cookie_mask=%u out_port=%u table_id=%u\n", fsr.aggregate, fsr.cookie, fsr.cookie_mask, fsr.out_port, fsr.table_id);
     //fprintf(stderr, "thoff: prepare_dump_flows returning\n");
     return vconn;
 }
@@ -900,12 +893,10 @@ ofctl_dump_flows__(int argc, char *argv[], bool aggregate)
 {
     struct ofpbuf *request;
     struct vconn *vconn;
-    fprintf(stderr, "thoff: ofctl_dump_flows__ called\n");
 
     // TODO - Check the values returned by prepare_dump_flows
     //      - Seems that the error comes from the prepare_dump_flows side of things.
     vconn = prepare_dump_flows(argc, argv, aggregate, &request);
-    fprintf(stderr, "---------------------------------------------\n");
     dump_stats_transaction(vconn, request);
     vconn_close(vconn);
 }
@@ -957,7 +948,6 @@ compare_flows(const void *afs_, const void *bfs_)
 static void
 ofctl_dump_flows(int argc, char *argv[])
 { 
-    fprintf(stderr, "thoff: ofctl_dump_flows called\n");
     if (!n_criteria) {
         //fprintf(stderr, "thoff: ofctl_dump_flows case 1\n");
         return ofctl_dump_flows__(argc, argv, false);
@@ -1098,8 +1088,6 @@ ofctl_flow_mod__(const char *remote, struct ofputil_flow_mod *fms,
     struct vconn *vconn;
     size_t i;
 
-    fprintf(stderr, "thoff: ofctl_flow_mod__ called\n");
-
     //fprintf(stderr, "thoff: ofctl_flow_mod__ calling open_vconn_for_flow_mod\n");
     protocol = open_vconn_for_flow_mod(remote, &vconn, usable_protocols);
 
@@ -1108,13 +1096,6 @@ ofctl_flow_mod__(const char *remote, struct ofputil_flow_mod *fms,
 
         //fprintf(stderr, "thoff: ofctl_flow_mod__ calling transact_noreply\n");
         transact_noreply(vconn, ofputil_encode_flow_mod(fm, protocol));
-        
-        int i;
-        fprintf(stderr, "... ofctl_flow_mod ... \n");
-        for (i = 0; i < fm->ofpacts_len; i++) {
-            fprintf(stderr, "%d ", *(((char *) fm->ofpacts) + i));
-        }
-        fprintf(stderr, "...... \n");
         
         free(fm->ofpacts);
     }
@@ -1142,7 +1123,6 @@ static void
 ofctl_flow_mod(int argc, char *argv[], uint16_t command)
 {
     enum ofputil_protocol usable_protocols;
-    fprintf(stderr, "thoff: ofctl_flow_mod\n");
 
     if (argc > 2 && !strcmp(argv[2], "-")) {
         ofctl_flow_mod_file(argc, argv, command);
@@ -1155,8 +1135,6 @@ ofctl_flow_mod(int argc, char *argv[], uint16_t command)
         if (error) {
             ovs_fatal(0, "%s", error);
         }
-        fprintf(stderr,
-                "thoff: ofctl_flow_mod calling ofctl_flow_mod__ ofpacts_len=%u\n", fm.ofpacts_len);
         ofctl_flow_mod__(argv[1], &fm, 1, usable_protocols);
     }
 }
@@ -1164,7 +1142,6 @@ ofctl_flow_mod(int argc, char *argv[], uint16_t command)
 static void
 ofctl_add_flow(int argc, char *argv[])
 {
-    fprintf(stderr, "thoff: ofctl_add_flow called\n");
     ofctl_flow_mod(argc, argv, OFPFC_ADD);
 }
 
@@ -1284,7 +1261,6 @@ ofctl_send(struct unixctl_conn *conn, int argc,
             continue;
         }
 
-        fprintf(stderr, "send: ");
         ofp_print(stderr, msg->data, msg->size, verbosity);
 
         error = vconn_send_block(vconn, msg);
@@ -2078,7 +2054,6 @@ recv_flow_stats_reply(struct vconn *vconn, ovs_be32 send_xid,
                       struct ofputil_flow_stats *fs, struct ofpbuf *ofpacts)
 {
     struct ofpbuf *reply = *replyp;
-    fprintf(stderr, "recv_flow_stats_reply called\n");
  
     for (;;) {
         int retval;
@@ -2140,8 +2115,6 @@ read_flows_from_switch(struct vconn *vconn,
     struct ofpbuf ofpacts;
     struct ofpbuf *reply;
     ovs_be32 send_xid;
-
-    fprintf(stderr, "thoff: read_flows_from_switch called\n");
 
     fsr.aggregate = false;
     match_init_catchall(&fsr.match);
@@ -2377,7 +2350,6 @@ ofctl_parse_flow(int argc OVS_UNUSED, char *argv[])
     if (fm.ofpacts_len > 0 && fm.ofpacts[0].type == OFPACT_LEARN) {
         struct ofpact_learn *learn;
         learn  = ofpact_get_LEARN(&fm.ofpacts[0]);
-        fprintf(stderr, "thoff: checking ofpact learn value in ofctl_parse_flow %d\n", learn->learn_on_timeout != 0);
     } 
     
     if (error) {

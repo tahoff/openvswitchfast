@@ -2448,7 +2448,6 @@ rule_actions_create(const struct ofpact *ofpacts, size_t ofpacts_len)
 {
     struct rule_actions *actions;
 
-    fprintf(stderr, "thoff: # rule_actions_create # ofpacts_len=%u\n", ofpacts_len);
     actions = xmalloc(sizeof *actions);
     atomic_init(&actions->ref_count, 1);
     actions->ofpacts = xmemdup(ofpacts, ofpacts_len);
@@ -3917,8 +3916,6 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
     uint8_t table_id;
     int error;
 
-    fprintf(stderr, "ofproto/ofproto.c add_flow called\n");
-
     error = check_table_id(ofproto, fm->table_id);
     if (error) {
         return error;
@@ -4522,7 +4519,6 @@ learn_learn_execute(const struct ofpact_learn_learn *learn,
         const struct flow *flow, struct ofputil_flow_mod *fm,
         struct ofpbuf *ofpacts, uint8_t rule_table)
 {
-    fprintf(stderr, "learn_learn_execute\n");
     //if (learn->learn_on_timeout) {
     //    return;
     //}
@@ -4667,9 +4663,6 @@ void timeout_act_execute(const struct ofpact_timeout_act *act,
     uint64_t stack_stub[1024 / 8];
     ofpbuf_use_stub(&ofpacts_buf, ofpacts_stub, sizeof ofpacts_stub);
     ofpbuf_use_stub(&stack, stack_stub, sizeof stack_stub);
-
-    fprintf(stderr," timeout_act_execute: act->ofpacts=%p act->ofpacts_len=%u\n",
-            act->ofpacts, act->ofpacts_len);
 
     if (act->ofpacts && act->ofpacts_len > 0) {
         //for (i = 0; i < act->ofpacts_len; i++) {}
@@ -4859,8 +4852,6 @@ handle_flow_mod(struct ofconn *ofconn, const struct ofp_header *oh)
     enum ofperr error;
     long long int now;
 
-    fprintf(stderr, "handle_flow_mod called\n");
-
     error = reject_slave_controller(ofconn);
     if (error) {
         goto exit;
@@ -4870,13 +4861,6 @@ handle_flow_mod(struct ofconn *ofconn, const struct ofp_header *oh)
     error = ofputil_decode_flow_mod(&fm, oh, ofconn_get_protocol(ofconn),
                                     &ofpacts);
     if (!error) {
-        int i;
-        fprintf(stderr, "... handle_flow_mod ... \n");
-        for (i = 0; i < fm.ofpacts_len; i++) {
-            fprintf(stderr, "%d ", *(((char *) fm.ofpacts) + i));
-        }
-        fprintf(stderr, "...... \n");
-
         error = handle_flow_mod__(ofproto, ofconn, &fm, oh);
     }
     if (error) {
@@ -4922,9 +4906,7 @@ handle_flow_mod__(struct ofproto *ofproto, struct ofconn *ofconn,
 {
     enum ofperr error;
 
-    fprintf(stderr, "thoff: handle_flow_mod__ called\n");
     ovs_mutex_lock(&ofproto_mutex);
-    fprintf(stderr, "thoff: handle_flow_mod__ lock acquired\n");
     if (ofproto->n_pending < 50) {
         switch (fm->command) {
         case OFPFC_ADD:
