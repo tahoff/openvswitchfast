@@ -156,8 +156,6 @@ populate_deferral_values(struct ofpact_learn_learn *learn,
     const struct ofpact_learn_spec *end;
     struct ofpact *learn_actions;
 
-    fprintf(stderr, "populate_deferral_values called\n");
-
     spec = (struct ofpact_learn_spec *) learn->data;
     end = &spec[learn->n_specs];
 
@@ -204,8 +202,6 @@ void do_deferral(struct ofpact *ofpacts, uint32_t ofpacts_len,
                  const struct flow *flow) {
    struct ofpact *a;
 
-   fprintf(stderr, "do_deferral called\n");
-
    OFPACT_FOR_EACH(a, ofpacts, ofpacts_len) {
        if (a->type == OFPACT_LEARN_LEARN) {
            populate_deferral_values(ofpact_get_LEARN_LEARN(a), flow);
@@ -235,9 +231,6 @@ learn_learn_from_openflow(const struct nx_action_learn_learn *nal,
     /*if (nal->pad) {
         return OFPERR_OFPBAC_BAD_ARGUMENT;
     }*/
-    fprintf(stderr, "learn_learn_from_openflow nal->len=%u\n", ntohs(nal->len));
-    fprintf(stderr, "nal->ofpacts_len=%u nal->n_specs=%u\n",
-            ntohl(nal->ofpacts_len), ntohl(nal->n_specs));
 
     learn = ofpact_put_LEARN_LEARN(ofpacts);
 
@@ -273,29 +266,16 @@ learn_learn_from_openflow(const struct nx_action_learn_learn *nal,
     spec_end = (char *) p + ntohl(nal->spec_len);
     //spec_end = (char *) (nal + 1) + ntohl(nal->n_specs)*sizeof(struct ofpact_learn_spec);
 
-    fprintf(stderr, "learn_learn_from_openflow - computing nal=%p end=%p spec_end=%p\n",
-            nal, end, spec_end);
-
-    fprintf(stderr, "____________ ");
-    for (j = 0; j < 64; j++) {
-        fprintf(stderr, "%d ", *(((char *) (nal + 1)) + j));
-    }
-    fprintf(stderr, "____________\n");
-
     for (p = nal + 1; p != spec_end; ) {
         uint8_t deferal_count;
         struct ofpact_learn_spec *spec;
         uint16_t header = ntohs(get_be16(&p));
 
         if ((char *) spec_end - (char *) p == 0) {
-            fprintf(stderr, "Zero diff break\n");
             break;
-        } else {
-            fprintf(stderr, "diff=%u p=%p\n",(char *) spec_end - (char *) p, p);
-        }
+        } 
 
         if (!header) {
-            fprintf(stderr, "breaking\n");
             break;
         }
         
@@ -303,8 +283,6 @@ learn_learn_from_openflow(const struct nx_action_learn_learn *nal,
         if ((char *) spec_end - (char *) p <= 0) {
             break;
         }
-
-        fprintf(stderr, "got u8\n");
 
         spec = ofpbuf_put_zeros(ofpacts, sizeof *spec);
         learn = ofpacts->l2;
@@ -314,8 +292,6 @@ learn_learn_from_openflow(const struct nx_action_learn_learn *nal,
         spec->dst_type = header & NX_LEARN_DST_MASK;
         spec->n_bits = header & NX_LEARN_N_BITS_MASK;
 
-        fprintf(stderr, "spec=%p spec->n_bits=%u\n", spec, spec->n_bits);
-        
         /* Check for valid src and dst type combination. */
         if (spec->dst_type == NX_LEARN_DST_MATCH ||
             spec->dst_type == NX_LEARN_DST_LOAD ||
@@ -328,10 +304,10 @@ learn_learn_from_openflow(const struct nx_action_learn_learn *nal,
         }
 
         if ((char *) spec_end - (char *) p < learn_min_len(header)) {
-            fprintf(stderr, "learn_learn_from_openflow BAD LEN\n");
-            fprintf(stderr, " p=%p nal+1=%p end=%p spec_end=%p learn_min_len(header)=%u\n",
-                    p, nal + 1, end, spec_end, learn_min_len(header));
-            fprintf(stderr, "difference=%u\n", (char *) spec_end - (char *) p);
+            //fprintf(stderr, "learn_learn_from_openflow BAD LEN\n");
+            //fprintf(stderr, " p=%p nal+1=%p end=%p spec_end=%p learn_min_len(header)=%u\n",
+            //        p, nal + 1, end, spec_end, learn_min_len(header));
+            //fprintf(stderr, "difference=%u\n", (char *) spec_end - (char *) p);
             return OFPERR_OFPBAC_BAD_LEN;
         }
 
@@ -340,7 +316,6 @@ learn_learn_from_openflow(const struct nx_action_learn_learn *nal,
             get_subfield(spec->n_bits, &p, &spec->src);
         } else {
             int p_bytes = 2 * DIV_ROUND_UP(spec->n_bits, 16);
-            fprintf(stderr, "p_bytes=%u spec->n_bits=%u\n", p_bytes, spec->n_bits);
 
             bitwise_copy(p, p_bytes, 0,
                          &spec->src_imm, sizeof spec->src_imm, 0,
@@ -359,7 +334,6 @@ learn_learn_from_openflow(const struct nx_action_learn_learn *nal,
         spec->defer_count = deferal_count;
     }
 
-    fprintf(stderr, "learn_learn_from_openflow about to do action parsing\n");
 
     // TODO Add actions
     // Compute the ofpacts_len
@@ -375,12 +349,11 @@ learn_learn_from_openflow(const struct nx_action_learn_learn *nal,
 
     learn = ofpacts->l2;
     //ofpbuf_put(&learn_ofpacts, spec_end, ofpacts_len);
-    fprintf(stderr, "calling pull_openflow10\n");
     ofpacts_pull_openflow10(&learn_ofpacts, ofpacts_len, &converted_learn_ofpacts);
     learn->ofpacts_len = converted_learn_ofpacts.size;
 
-    fprintf(stderr, "converted_learn_ofpacts.size=%u learn_ofpacts.size=%u learn->ofpacts_len=%u learn->n_specs=%u\n",
-	    converted_learn_ofpacts.size, learn_ofpacts.size, learn->ofpacts_len, learn->n_specs);
+    //fprintf(stderr, "converted_learn_ofpacts.size=%u learn_ofpacts.size=%u learn->ofpacts_len=%u learn->n_specs=%u\n",
+	  //  converted_learn_ofpacts.size, learn_ofpacts.size, learn->ofpacts_len, learn->n_specs);
 
     // Add the data to ofpacts
     ofpbuf_put(ofpacts, converted_learn_ofpacts.data, converted_learn_ofpacts.size);
@@ -395,14 +368,6 @@ learn_learn_from_openflow(const struct nx_action_learn_learn *nal,
     learn = ofpacts->l2;
     ofpact_update_len(ofpacts, &learn->ofpact);
 
-    fprintf(stderr, "n_specs=%u learn->ofpact.len=%u \n", learn->n_specs, learn->ofpact.len);
-
-    fprintf(stderr, "____________ ");
-    for (j = 0; j < 64; j++) {
-        fprintf(stderr, "%d ", learn->data[j]);
-    }
-    fprintf(stderr, "____________\n");
-
     // TODO Ensure this change was okay, there will be data
     // between the p and end because of the action data.
     if ((char *) spec_end - (char *) p <= 0) {
@@ -413,7 +378,7 @@ learn_learn_from_openflow(const struct nx_action_learn_learn *nal,
     //}
 
     if (learn->ofpacts_len == 0 && nal->ofpacts_len > 0) {
-        fprintf(stderr, "******************* learn_learn_from_openflow loses actions ****\n");
+        //fprintf(stderr, "******************* learn_learn_from_openflow loses actions ****\n");
     }
 
     return 0;
@@ -430,13 +395,9 @@ learn_learn_check(const struct ofpact_learn_learn *learn,
     struct match match;
     struct ofpact *ofpacts;
 
-    fprintf(stderr, "learn_learn_check n_specs=%u ofpacts_len=%u data=%p\n",
-            learn->n_specs, learn->ofpacts_len, learn->data);
-
     match_init_catchall(&match);
     spec = (const struct ofpact_learn_spec *) learn->data;
     spec_end = &spec[learn->n_specs];
-    fprintf(stderr, "spec=%p spec_end=%p\n", spec, spec_end);
 
     for (spec = (const struct ofpact_learn_spec *) learn->data;
          spec < spec_end; spec++) {
@@ -453,9 +414,6 @@ learn_learn_check(const struct ofpact_learn_learn *learn,
         if (spec->src_type == NX_LEARN_SRC_FIELD) {
             error = mf_check_src(&spec->src, flow);
             if (error) {
-                fprintf(stderr,
-                        "thoff: learn_learn_check err1 learn_len=%u n_specs=%u\n",
-                        learn->ofpact.len, learn->n_specs);
                 return error;
             }
         }
@@ -465,7 +423,6 @@ learn_learn_check(const struct ofpact_learn_learn *learn,
         case NX_LEARN_DST_MATCH:
             error = mf_check_src(&spec->dst, &match.flow);
             if (error) {
-                fprintf(stderr, "thoff: learn_check err2\n");
                 return error;
             }
 
@@ -493,7 +450,6 @@ learn_learn_check(const struct ofpact_learn_learn *learn,
     // TODO Check actions
     ofpacts = (struct ofpact *) spec_end;
     if (ofpacts && learn->ofpacts_len > 0) {
-        fprintf(stderr, "~~~~~~ learn_learn_check learn->ofpacts=%u\n", learn->ofpacts_len);
         return ofpacts_check(ofpacts, learn->ofpacts_len, flow, OFPP_MAX, 0);
     }
 
@@ -540,9 +496,6 @@ learn_learn_to_nxast(const struct ofpact_learn_learn *learn,
     unsigned int spec_len;
     const struct ofpact *learn_actions;
 
-    fprintf(stderr, "learn_learn_to_nxast learn->n_specs=%u learn->ofpacts_len=%u openflow.size=%u\n",
-            learn->n_specs, learn->ofpacts_len, openflow->size);
-
     n_specs = 0;
     ofpact_len = 0;
 
@@ -562,8 +515,6 @@ learn_learn_to_nxast(const struct ofpact_learn_learn *learn,
     spec = (const struct ofpact_learn_spec *) learn->data;
     end = &spec[learn->n_specs];
 
-    fprintf(stderr, "learn_learn_to_nxast spec=%p end=%p\n", spec, end);
-
     len = openflow->size;
 
     for (spec = (const struct ofpact_learn_spec *) learn->data;
@@ -576,7 +527,6 @@ learn_learn_to_nxast(const struct ofpact_learn_learn *learn,
         } else {
             size_t n_dst_bytes = 2 * DIV_ROUND_UP(spec->n_bits, 16);
             uint8_t *bits = ofpbuf_put_zeros(openflow, n_dst_bytes);
-            fprintf(stderr, "n_dst_bytes=%u\n", n_dst_bytes);
 
             bitwise_copy(&spec->src_imm, sizeof spec->src_imm, 0,
                     bits, n_dst_bytes, 0,
@@ -619,7 +569,6 @@ learn_learn_to_nxast(const struct ofpact_learn_learn *learn,
     ofpact_len = openflow->size - len;
 
     if ((openflow->size - start_ofs) % 8) {
-        fprintf(stderr, "learn_learn_to_nxast padding=%u\n", 8 - (openflow->size - start_ofs) % 8);
         nal->rear_padding = 8 - (openflow->size - start_ofs) % 8;
         ofpbuf_put_zeros(openflow, 8 - (openflow->size - start_ofs) % 8);
     }
@@ -630,14 +579,6 @@ learn_learn_to_nxast(const struct ofpact_learn_learn *learn,
     nal = ofpbuf_at_assert(openflow, start_ofs, sizeof *nal);
     nal->len = htons(openflow->size - start_ofs);
     nal->ofpacts_len = htonl(ofpact_len);
-
-    fprintf(stderr, "nal->len=%u ofpact_len=%u len=%u openflow->size=%u\n",
-            ntohs(nal->len), ofpact_len, len, openflow->size);
-
-    if (learn->ofpacts_len > 0 && nal->ofpacts_len == 0) {
-        fprintf(stderr, "******************* learn_learn_to_nxast loses actions **** %u %u\n", learn->ofpacts_len, nal->ofpacts_len);
-    }
-
 }
 
 /* Composes 'fm' so that executing it will implement 'learn' given that the
@@ -958,8 +899,6 @@ learn_learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
 
     int j;
 
-    fprintf(stderr, "learn_learn_parse__ called\n");
-
     act_str = strstr(orig, "actions");
     end_act_str = NULL;
     if (act_str) {
@@ -989,9 +928,6 @@ learn_learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
     learn = ofpact_put_LEARN_LEARN(ofpacts);
     ptr = (char *) learn;
 
-    fprintf(stderr, "thoff: learn_learn_parse__ ofpacts size=%i allocated=%i\n",
-             ofpacts->size, ofpacts->allocated);
-    fprintf(stderr, "thoff: learn_learn_parse__ sizeof(ofpact_learn)=%i\n", sizeof(*learn));
     learn->idle_timeout = OFP_FLOW_PERMANENT;
     learn->hard_timeout = OFP_FLOW_PERMANENT;
     learn->priority = OFP_DEFAULT_PRIORITY;
@@ -1038,14 +974,10 @@ learn_learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
            void *actions;
 
            // TODO check
-           fprintf(stderr, "learn_learn_parse__ actions %s\n", value);
-
            usable_protocols = OFPUTIL_P_OF10_STD_TID;
 
            memcpy(all_actions, act_str, end_act_str - act_str);
            all_actions[end_act_str - act_str] = '\0';
-
-           fprintf(stderr, "learn_learn_parse__ actions=%s\n", all_actions);
 
            error = str_to_inst_ofpacts(all_actions, &learn_ofpacts_buf, &usable_protocols);
            if (error) {
@@ -1061,9 +993,6 @@ learn_learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
            //ofpact_update_len(ofpacts, &learn->ofpact);
 
            break;
-
-           fprintf(stderr, "learn_learn_parse__ learn->ofpacts_len=%u\n",
-                   learn->ofpacts_len);
         } else {
             uint8_t deferral_count;
             struct ofpact_learn_spec *spec;
@@ -1105,7 +1034,6 @@ learn_learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
 
             // Attach deferral count
             spec->defer_count = deferral_count;
-            fprintf(stderr, "spec->defer_count=%u\n", spec->defer_count);
 
             /* Update 'match' to allow for satisfying destination
              * prerequisites. */
@@ -1113,13 +1041,6 @@ learn_learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
                     && spec->dst_type == NX_LEARN_DST_MATCH) {
                 mf_write_subfield(&spec->dst, &spec->src_imm, &match);
             }
-
-	    fprintf(stderr, "........");
-	    for (i = 0; i < sizeof *spec; i++) {
-            fprintf(stderr, "%d ", *(((char *) (spec)) + i));
-	    }
-	    fprintf(stderr, "........\n");
-
         }
     }
 
@@ -1142,14 +1063,6 @@ learn_learn_parse__(char *orig, char *arg, struct ofpbuf *ofpacts)
     //learn->data = (char *) learn + offsetof(struct ofpact_learn_learn, data); 
     //learn->data = learn + 1;
     
-    fprintf(stderr, "learn_learn_parse n_specs=%u, ofpacts_len=%u data=%p\n",
-            learn->n_specs, learn->ofpacts_len, learn->data);
-
-    for (j = 0; j < learn->ofpact.len; j++) {
-        fprintf(stderr, "%d ", *(ptr + j));
-    }
-    fprintf(stderr, "\n");
-
     return NULL;
 }
 
@@ -1188,16 +1101,6 @@ learn_learn_format(const struct ofpact_learn_learn *learn, struct ds *s)
 
     int j;
 
-    fprintf(stderr, "learn_learn_format\n");
-
-    fprintf(stderr,"__________ ");
-    for (j = 0; j < learn->ofpact.len; j++) {
-
-        fprintf(stderr, "%d ", *((char *) learn + j));
-    }
-    fprintf(stderr,"__________ ");
-    fprintf(stderr, "\n");
-
     match_init_catchall(&match);
 
     ds_put_format(s, "learn_learn(table=%"PRIu8, learn->table_id);
@@ -1223,12 +1126,12 @@ learn_learn_format(const struct ofpact_learn_learn *learn, struct ds *s)
         ds_put_format(s, ",cookie=%#"PRIx64, learn->cookie);
     }
 
-    ds_put_format(s, ",learn_on_timeout=%"PRIu8, learn->learn_on_timeout);
+    //ds_put_format(s, ",learn_on_timeout=%"PRIu8, learn->learn_on_timeout);
 
     if (learn->table_spec == LEARN_USING_INGRESS_ATOMIC_TABLE) {
         ds_put_cstr(s, ",table_spec=LEARN_USING_INGRESS_ATOMIC_TABLE");
     } else if (learn->table_spec == LEARN_USING_EGRESS_ATOMIC_TABLE) {
-	ds_put_cstr(s, ",table_spec=LEARN_USING_EGRESS_ATOMIC_TABLE");
+        ds_put_cstr(s, ",table_spec=LEARN_USING_EGRESS_ATOMIC_TABLE");
     } else if (learn->table_spec == LEARN_USING_RULE_TABLE) {
         ds_put_cstr(s, ",table_spec=LEARN_USING_RULE_TABLE");
     }

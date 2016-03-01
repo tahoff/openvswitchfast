@@ -26,7 +26,8 @@ TESTSUITE_AT = \
 	tests/lacp.at \
 	tests/learn.at \
 	tests/learn_delete.at \
-	tests/vconn.at \
+	tests/increment_table_id.at \
+    tests/vconn.at \
 	tests/file_name.at \
 	tests/aes128.at \
 	tests/unixctl-py.at \
