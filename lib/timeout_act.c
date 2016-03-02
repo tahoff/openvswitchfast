@@ -30,15 +30,11 @@ timeout_act_to_nxast(const struct ofpact_timeout_act *act,
     size_t start_ofs = out->size;
     unsigned int remainder;
     unsigned int len;
-    fprintf(stderr, "timeout_act_to_nxast called\n");
 
     nta = ofputil_put_NXAST_TIMEOUT_ACT(out);
     nta->ofpacts_len = htons(act->ofpacts_len);
     //out->size -= sizeof nta->ofpacts;
 
-    fprintf(stderr, "nta->ofpacts_len=%u act->ofpacts_len=%u\n",
-            nta->ofpacts_len, act->ofpacts_len);
-    
     ofpacts_put_openflow10(act->ofpacts, act->ofpacts_len, out);
     //ofpbuf_put(out, act->ofpacts, act->ofpacts_len);
  
@@ -49,13 +45,6 @@ timeout_act_to_nxast(const struct ofpact_timeout_act *act,
     nta = ofpbuf_at(out, start_ofs, sizeof *nta);
     nta->len = htons(out->size - start_ofs);
   
-    int i;
-    fprintf(stderr, "...... ");
-    for (i = 0; i < act->ofpacts_len; i++) {
-        fprintf(stderr, "%d ", *(((char *) act->ofpacts) + i));
-    }
-    fprintf(stderr, "......\n");
-
     /*
     struct nx_action_timeout_act *nta;
     size_t start_ofs = out->size;
@@ -103,8 +92,6 @@ timeout_act_from_openflow(const struct nx_action_timeout_act *nta,
     struct ofpbuf converted_timeout_ofpacts;
     ofpbuf_init(&converted_timeout_ofpacts, 32);
 
-    fprintf(stderr, "-- timeout_act_from_openflow called --\n");
-    
     //length = ntohs(nta->len) - offsetof(struct nx_action_timeout_act, ofpacts);
     //timeout_act = ofpact_put(out, ofpact_timeout_act, 
     //                        offsetof(struct ofpact_timeout_act, ofpacts) + length);
@@ -126,25 +113,6 @@ timeout_act_from_openflow(const struct nx_action_timeout_act *nta,
     //memcpy(ofpacts, nta + 1, timeout_act->ofpacts_len); 
     
     ofpact_update_len(out, &timeout_act->ofpact);
-
-    fprintf(stderr, "timeout_act_from_openflow timeout_act=%p out=%p\n", timeout_act, out); 
-    fprintf(stderr, "timeout_act_from_openflow length=%u nta->ofpacts_len=%u nta->ofpacts=%p\n",
-            length, ntohs(nta->ofpacts_len), nta + 1);
-    
-   int i;
-   fprintf(stderr, "...... ");
-   for (i = 0; i < timeout_act->ofpacts_len; i++) {
-       fprintf(stderr, "%d ", *(((char *) timeout_act->ofpacts) + i));
-   }
-   fprintf(stderr, "......\n");
-
-    
-    fprintf(stderr, "timeout_act->ofpact.len = %u\n", timeout_act->ofpact.len);
-    fprintf(stderr, "timeout_act->ofpacts_len=%u out->size=%u nta->len=%u\n",
-            timeout_act->ofpacts_len, out->size, ntohs(nta->len));
-    fprintf(stderr, "-- timeout_act_from_openflow returning timeout_act->ofpacts%p --\n",
-            timeout_act->ofpacts);
-
     return 0;
 
     /* NOT WORKING ...
@@ -220,15 +188,6 @@ enum ofperr timeout_act_check(const struct ofpact_timeout_act *act,
                               struct flow *flow) 
 {
     // TODO - TEST
-    fprintf(stderr, "~~~~ timeout_act_check %u %p ~~~~ \n", 
-            act->ofpacts_len, act->ofpacts);
-    int i;
-    fprintf(stderr, "......\n");
-    for (i = 0; i < act->ofpacts_len; i++) {
-        fprintf(stderr, "%d ", *(((char *) act->ofpacts) + i));
-    }
-    fprintf(stderr, "......\n");
-    
     if (act->ofpacts && act->ofpacts_len > 0) {
        return ofpacts_check(act->ofpacts, act->ofpacts_len, flow, OFPP_MAX, 0);
     }
@@ -241,11 +200,7 @@ void timeout_act_format(const struct ofpact_timeout_act *act, struct ds *s)
     const struct ofpact *a;
     ds_put_cstr(s, "timeout_act(");
 
-    fprintf(stderr, "timeout_act_format act->ofpact=%p act->ofpacts_len=%u\n",
-            act->ofpacts, act->ofpacts_len);
-    
     OFPACT_FOR_EACH (a, act->ofpacts, act->ofpacts_len) {
-        fprintf(stderr, "timeout_act_format LOOP %p\n", a);
         ofpact_format(a, s);
         ds_put_char(s, ',');
     }
@@ -258,8 +213,6 @@ timeout_act_parse__(char *orig, char *arg, struct ofpbuf *ofpacts) {
     /* -- ORIGINAL - Works, but error in check -- */
     struct ofpact_timeout_act *act;
     char *act_str = xstrdup(orig);
-
-    fprintf(stderr, "timeout_act_parse__ called: %s \n", arg);
 
     struct ofpbuf timeout_ofpacts;
     char *error;
@@ -282,8 +235,6 @@ timeout_act_parse__(char *orig, char *arg, struct ofpbuf *ofpacts) {
     }
     
     len = timeout_ofpacts.size;
-    fprintf(stderr, "timeout_act_parse__ len=%u timeout_ofpacts.size=%u\n",
-            len, timeout_ofpacts.size);
     
     ofpbuf_put_zeros(ofpacts, len);
     
@@ -294,17 +245,8 @@ timeout_act_parse__(char *orig, char *arg, struct ofpbuf *ofpacts) {
     act->ofpacts_len += len;
 
     act->ofpacts = ofpbuf_steal_data(&timeout_ofpacts);
-    int i;
-    fprintf(stderr, "...... ");
-    for (i = 0; i < len; i++) {
-        fprintf(stderr, "%d ", *(((char *) act->ofpacts) + i));
-    }
-    fprintf(stderr, "......\n");
-
     ofpact_update_len(ofpacts, &act->ofpact);
     
-    fprintf(stderr, "timeout_act_parse__ act=%p ofpacts=%p\n", act, act->ofpacts);
-    fprintf(stderr, "timeout_act_parse__ timeout_ofpacts.size=%u \n", len);
 
     free(act_str);
     return NULL;

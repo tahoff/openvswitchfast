@@ -28,6 +28,7 @@ TESTSUITE_AT = \
 	tests/learn_delete.at \
 	tests/learn_learn.at \
 	tests/increment_table_id.at \
+    tests/timeout_act.at \
     tests/vconn.at \
 	tests/file_name.at \
 	tests/aes128.at \

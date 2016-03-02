@@ -1,0 +1,24 @@
+AT_BANNER([learning delete action])
+
+AT_SETUP([learning delete action - Delete all rules in a single table])
+# Set up flow tables
+OVS_VSWITCHD_START(
+  [add-port br0 p1 -- set Interface p1 type=dummy ofport_request=1 -- \
+   add-port br0 p2 -- set Interface p2 type=dummy ofport_request=2 -- \
+   add-port br0 p3 -- set Interface p3 type=dummy ofport_request=3])
+
+AT_DATA([flows.txt], [[
+table=150, priority=10, hard_timeout=3, actions=timeout_act(learn_learn(table=220, priority=4))
+]])
+AT_CHECK([ovs-ofctl add-flows br0 flows.txt])
+
+sleep 5
+
+# Have a packet delete all rules in table 201
+AT_CHECK([ovs-ofctl dump-flows br0 | ofctl_strip | sort], [0], [dnl
+ table=220, priority=4 actions=drop
+NXST_FLOW reply:
+])
+OVS_VSWITCHD_STOP
+AT_CLEANUP
+
