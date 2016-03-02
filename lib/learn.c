@@ -140,7 +140,6 @@ learn_from_openflow(const struct nx_action_learn *nal, struct ofpbuf *ofpacts)
 
         struct ofpact_learn_spec *spec;
         uint16_t header = ntohs(get_be16(&p));
-        uint8_t deferal_count = get_u8(&p);
         
         if (!header) {
             break;
@@ -189,6 +188,8 @@ learn_from_openflow(const struct nx_action_learn *nal, struct ofpbuf *ofpacts)
             spec->dst_type == NX_LEARN_DST_LOAD) {
             get_subfield(spec->n_bits, &p, &spec->dst);
         }
+
+        uint8_t deferal_count = get_u8(&p);
     }
     ofpact_update_len(ofpacts, &learn->ofpact);
         
@@ -302,9 +303,6 @@ learn_to_nxast(const struct ofpact_learn *learn, struct ofpbuf *openflow)
     for (spec = learn->specs; spec < &learn->specs[learn->n_specs]; spec++) {
         put_u16(openflow, spec->n_bits | spec->dst_type | spec->src_type);
 
-        // Add the defer count
-        ofpbuf_put(openflow, &spec->defer_count, sizeof spec->defer_count);
-
         if (spec->src_type == NX_LEARN_SRC_FIELD) {
             put_u32(openflow, spec->src.field->nxm_header);
             put_u16(openflow, spec->src.ofs);
@@ -321,6 +319,9 @@ learn_to_nxast(const struct ofpact_learn *learn, struct ofpbuf *openflow)
             put_u32(openflow, spec->dst.field->nxm_header);
             put_u16(openflow, spec->dst.ofs);
         }
+
+        // Add the defer count
+        ofpbuf_put(openflow, &spec->defer_count, sizeof spec->defer_count);
 
     }
 
