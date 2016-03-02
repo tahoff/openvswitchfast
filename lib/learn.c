@@ -829,12 +829,9 @@ learn_format(const struct ofpact_learn *learn, struct ds *s)
         ds_put_format(s, ",cookie=%#"PRIx64, learn->cookie);
     }
 
-    /*if (learn->learn_on_timeout != 0) {
-        ds_put_format(s, ",learn_on_timeout=%"PRIx64, 1);
-    } else {
-        ds_put_format(s, ",learn_on_timeout=%"PRIx64, 0);
-    }*/
-    ds_put_format(s, ",learn_on_timeout=%"PRIu8, learn->learn_on_timeout);
+    if (learn->learn_on_timeout != 0) {
+        ds_put_cstr(s, ",learn_on_timeout");
+    }
 
     for (spec = learn->specs; spec < &learn->specs[learn->n_specs]; spec++) {
         ds_put_char(s, ',');
